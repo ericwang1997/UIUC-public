@@ -1,0 +1,1051 @@
+---
+title: "How can Teachers Effectively Predict Students' Performance in Math?"
+author: "Wei-Chen (Eric) Wang"
+date: "Due 4/15/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+library(ggplot2) 
+library(class) 
+library(knitr) 
+library(kableExtra)
+library(ISLR)
+library(glmnet) 
+library(dplyr) 
+library(caret) 
+library(tree) 
+library(randomForest) 
+library(gbm) 
+library(xgboost)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 0. Notes on this report 
+
+1. Significance level is set at 0.05 unless specified otherwise. 
+2. When the file is converted to html everything looks fine, but when converted to PDF, some rendering occasionally gets misplaced. In particular, this happens when there are text (usually descriptions) after an image. 
+
+### 1. Introduction 
+This project sought to explore the potential factors that could impact students' academic performance in math. The dataset was obtained from the [machine learning repository](https://archive.ics.uci.edu/ml/datasets/Student+Performance#) at the University of California, Irvine. The data were collected using school reports and questionnaires from two Portuguese secondary schools. Attributes include grades, demographic, social and school related features. 
+
+It could sometimes be hard for faculties to effectively predict performances of every individual, which deteriorates their ability to assist students and make personalized adjustments. Using machine learning algorithms, this paper explores numerous types of mathematical models, including linear regression, Lasso and Ridge regressions, Bagging, Random Forest, Boosting and Extreme Gradient Boosting. 
+
+### 2. First report 
+
+#### 2.1 Variables 
+
+##### 2.1.1 Response variables 
+
+- `G3`: student final grade (numeric: from `0` to `20`) 
+
+##### 2.1.2 Predictor variables 
+
+```{r, echo = FALSE}
+variables = c('`absences`', '`activities`', '`address`', '`age`', '`famsize`', '`famsup`', '`failures`', '`Fedu`', '`goout`', '`higher`', '`Medu`', '`paid`', '`school`', '`schoolsup`', '`sex`', '`studytime`', '`traveltime`') 
+
+type = c('`numeric`', '`binary`', '`binary`', '`numeric`', '`binary`', '`binary`', '`failures`', '`numeric`', '`numeric`', '`binary`', '`numeric`', '`binary`', '`binary`', '`binary`', '`binary`', '`numeric`', '`numeric`')
+
+description = c('number of school absences', 
+                'extracurricular activities', 
+                'student’s home address type',
+                'student’s age', 
+                'family size', 
+                'family educational support', 
+                'number of past class failures', 
+                'father’s education', 
+                'going out with friends', 
+                'wants to take higher education', 
+                'mother’s education', 
+                'extra paid classes within the course subject', 
+                'student’s school', 
+                'extra educational support', 
+                'student’s sex', 
+                'weekly study time', 
+                'home to school travel time')
+
+possible = c('from `0` to `93`', 
+             '`yes` or `no`', 
+             '`U` for urban, `R` for rural', 
+             '`15` to `22`',
+             '`LE3` for less or equal to `3`, `GT3` for greater than `3`', 
+             '`yes` or `no`', 
+             '`n` for 1 <= `n` < 3, 3 for `n` >= 3', 
+             '`0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education', 
+             'from `1` for very low to `5` for very high', 
+             '`yes` or `no`', 
+             '`0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education',
+             '`yes` or `no`', 
+             '`GP` for Gabriel Pereira, `MS` for Mousinho da Silveira', 
+             '`yes` or `no`', 
+             '`F` for female, `M` for male', 
+             '`1` for less than 2 hours, `2` for 2 to 5 hours, `3` for 5 to 10 hours, `4` for more than 10 hours', 
+             '`1` for less than 15 min, `2` for 15 to 30 min, `3` for 30 min to 1 hour, `4` for more than 1 hour' )
+
+df = data.frame('Variables' = variables, 'Type' = type, 'Description' = description, 'Possible Values' = possible) 
+kable(df) %>% kable_styling(position = "left") 
+```
+
+Note that the following two variables were expected to be highly correlated to `G3`, because the first and second period grade had significant impact on the final grade. 
+
+```{r, echo = FALSE}
+variables = c('`G1`', '`G2`') 
+type = c('`numeric`', '`numeric`') 
+description = c('first period grade', 'second period grade')
+possible = c('from `0` to `20`', 'from `0` to `20`') 
+df = data.frame('Variables' = variables, 'Type' = type, 'Description' = description, 'Possible Values' = possible) 
+kable(df) %>% kable_styling(position = "left") 
+```
+
+### 2.2 Potential predictor variables 
+
+I choose to include variables: `failures`, `goout`, `studytime`, and `absences` because I expect them to help explain student performance. Note that these four variables were all discrete. 
+
+```{r}
+# Import data and extract required information 
+data = read.csv('student-mat.csv', sep = ';')
+data = data[data$G3 > 0, ] 
+df = data.frame('G3' = data$G3, 
+                'failures' = data$failures, 
+                'goout' = data$goout, 
+                'studytime' = data$studytime, 
+                'absences' = data$absences) 
+```
+
+#### 2.2.1 Final Grade  
+
+```{r}
+ggplot(df, aes(x=factor(G3)))+
+  geom_bar(stat="count", width=0.7, fill="steelblue") + 
+  ggtitle("Barplot of Students' Final Grade") + 
+  xlab('Final grade') + 
+  ylab("Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The barplot above showed the distribution of final grades. Note that the possible score ranges from `0` to `20`, and roughly follows a normal distribution. 
+
+#### 2.2.2 Failures 
+
+```{r}
+ggplot(df, aes(x=factor(failures)))+
+  geom_bar(stat="count", width=0.7, fill="steelblue") + 
+  ggtitle("Barplot of Students' Failures") + 
+  xlab('Failures') + 
+  ylab("Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The barplot above shows the distribution of failures, which showed that the majority of students did not fail even once in the past. Recall that `3` represented students who failed 3 or more classes. 
+
+#### 2.2.3 Go outs 
+
+```{r}
+ggplot(df, aes(x=factor(goout)))+
+  geom_bar(stat="count", width=0.7, fill="steelblue") + 
+  ggtitle("Barplot of Students' Go Out frequency") + 
+  xlab('Go out frequency') + 
+  ylab("Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The barplot above showed the distribution of how frequently students went out with friends, while most students spent an intermediate amount of time with their friends. Recall that `goout` ranged from `1` (very low) to `5` (very high). 
+
+#### 2.2.4 Study Time 
+
+```{r}
+ggplot(df, aes(x=factor(studytime)))+
+  geom_bar(stat="count", width=0.7, fill="steelblue") + 
+  ggtitle("Barplot of Students' Study Time") + 
+  xlab('Study Time') + 
+  ylab("Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The barplot above showed the distribution of how much time students spent studying weekly. It indicated that most students study for less than or equal to `5` hours per week. Recall that for `studytime`, `1` represented students who spent less than 2 hours, and `2` represented students who spent 2 to 5 hours weekly. 
+
+#### 2.2.5 absences 
+
+```{r}
+ggplot(df, aes(x=absences)) + 
+  geom_histogram(binwidth = 2, fill='steelblue') + 
+  ggtitle("Histogram of Students' absences") + 
+  xlab('absences') + 
+  ylab("Frequency") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The histogram above showed the distribution of absences. While most students had less than `10` school absences, there existed a fair amount of outliers. Interestingly, the individual who had the most abscent (`93`) did not perform significantly worse than other students. 
+
+### 2.3 Correlation 
+
+#### 2.3.1 Final Grade / Failures 
+
+```{r}
+cor(df$G3, df$failures)
+```
+
+The value above indicates that there is a negative correlation between failures and final grade, which implies that more failures in past courses can lead to a decrease in the final grade. 
+
+```{r}
+ggplot(df, aes(x=failures, y=G3)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE) + 
+  ggtitle("Failures vs. Final Grade") + 
+  xlab('Failures') + 
+  ylab("Final Grade") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The figure above indicated a negative correlation between `failures` and final grade. This was expected because students who failed more times in previous classes were less likely to perform well. 
+
+#### 2.3.2 FInal Grades / Go out 
+
+```{r}
+cor(df$G3, df$goout)
+```
+
+The value above indicates that there is a negative correlation between going out and final grade, which implies that more frequently students go out with their friends can lead to a decrease in the final grade. 
+
+```{r}
+ggplot(df, aes(x=goout, y=G3)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE) + 
+  ggtitle("Failures vs. Final Grade") + 
+  xlab('Failures') + 
+  ylab("Final Grade") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The figure above indicated a negative correlation between `goout` and final grade, even though the relationship was less significant. It showed a slight tendency that students who went out with friends frequently would perform worse. 
+
+#### 2.3.3 Final Grades / Study time 
+
+```{r}
+cor(df$G3, df$studytime)
+```
+
+The value above indicates that there is a positive correlation between study time and final grade, which implies that increasing time spent on studying can lead to a decrease in the final grade. 
+
+```{r}
+ggplot(df, aes(x=studytime, y=G3)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE) + 
+  ggtitle("Failures vs. Final Grade") + 
+  xlab('Failures') + 
+  ylab("Final Grade") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The figure above indicated a positive correlation between study time and final grade. It was expected because students who spent more time studying were expected to perform better. 
+
+#### 2.3.4 Final Grades / absences 
+
+```{r}
+cor(df$G3, df$absences)
+```
+
+The value above indicates that there is a negative correlation between absences and final grade, which implies that more absences can lead to a decrease in the final grade. 
+
+```{r}
+ggplot(df, aes(x=absences, y=G3)) + 
+  geom_point() + 
+  geom_smooth(method = lm, se = FALSE) + 
+  ggtitle("Failures vs. Final Grade") + 
+  xlab('Failures') + 
+  ylab("Final Grade") + 
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+The figure above showed a tendency that students who were abscent for more classes could perform worse, which was expected. 
+
+### 3. Report 2 
+
+#### 3.1 Linear regressions 
+In this section, we explore the potential factors that can influence a student's final grade in mathematics. 
+
+##### 3.1.1. First model 
+Intuitively, students' grades in their first and second period grade has significant impact on their final grade. If a student performed well in the beginning and middle of the semester, he is likely to receive a good final grade. We run the model: 
+
+$$Y = \beta_0 + \beta_1G_1 + \beta_2G_2 + \epsilon$$ 
+where $Y$ is the final grade in math, $G_1$ and $G_2$ are the first and second period grades, $\epsilon$ is the error term, and $\beta_i$ are the coefficients. 
+
+```{r}
+model1 = lm(G3 ~ G1 + G2, data = data) 
+summary(model1)$adj.r.squared 
+```
+
+Even though the adjusted $R^2$ is high, there exists a collineariy problem because the first and second period grades directly count towards part of the final grade. Furthermore, this project is more interested in how other student factors, such as the time they spent on studying, can impact their final grade. In most cases, we would not have students' first and second period grade before we make a prediction. 
+
+##### 3.1.2 Second model 
+
+Among all the parameters, I believe that the time they spent on studying and the number of times they failed the course have the most significant impact on students' final grade. Therefore, we run the model: 
+
+$$Y = \beta_0 + \beta_1S + \beta_2F + \epsilon$$ 
+where $S$ is the time students spent on studying, and $F$ is the number of times they failed the course. 
+
+```{r}
+model2 = lm(G3 ~ studytime + failures, data = data) 
+summary(model2)$adj.r.squared 
+```
+
+Unfortunately, the adjusted $R^2$ indicated that the two variables do not explain much about the final grade. Therefore, we consider including more variables in the following models. 
+
+##### 3.1.3 Third model 
+
+Even the second model yielded a low adjusted $R^2$ squared, the second variable is significant at the level of $\alpha=0.05$. Therefore, we try the model with only one predictor, namely: 
+
+$$Y = \beta_0 + \beta_2F + \epsilon$$ 
+
+```{r}
+model3 = lm(G3 ~ failures, data = data) 
+summary(model3)$adj.r.squared 
+```
+
+Here, we can see that the adjusted $R^2$ increased slightly. It implied an insignificant relationship between how much time students spent studying and their final grade. Therefore, we include $F$ in future models, while excluding $S$. 
+
+##### 3.1.4 Fourth model 
+
+We include more variables to create a more complicated model: 
+
+$$Y = \beta_0 + \beta_1F + \beta_2ME + \beta_3FE + \beta_4G + \beta_5T + \epsilon$$ 
+
+where $ME$ is the mother's education, $FE$ is the father's education, $G$ is the frequency of going out with friends, and $T$ is the travel time from home to school. 
+
+```{r}
+model4 = lm(G3 ~ failures + Medu + Fedu + goout + age + traveltime, data=data) 
+summary(model4)$adj.r.squared 
+```
+
+While the adjusted $R^2$ increased slightly, it is still far from desired. We will continue exploring other variables that may have an impact on the final grade. 
+
+##### Fifth model: 
+
+Using a full model with all $x$ variables (excluding $G1$, $G2$) and the step function, we try the following regression: 
+
+$$Y = \beta_0 + \beta_1S + \beta_2A + \beta_3FS + \beta_4ME + \beta_5T + \beta_6F + \beta_7H + \beta_8G+ \epsilon$$ 
+
+where $S$ is the dummy variable for sex ($1$ for male, $0$ for female), $A$ for age, $FS$ is the dummy variable for family size ($1$ for family size less than or equal to $3$, $0$ otherwise), $H$ is the dummy variable for wanting to take higher education ($1$ for yes, $0$ for no$). 
+
+```{r}
+model5 = lm(G3 ~ school + sex + Mjob + Fjob + studytime + failures + 
+    schoolsup + famsup + paid + internet + goout + health + absences, data = data) 
+summary(model5)$adj.r.squared 
+```
+
+With more variables, the adjusted $R^2$ increased to $0.277$. While the value is still relatively low, it is the best model we can obtain so far. 
+
+#### 3.2 Best linear regression 
+
+```{r}
+summary(model5) 
+```
+
+Here, we briefly analyze the effects and interpretations of each predictor. 
+
+```{r echo=FALSE}
+estimates = unname(summary(model5)$coefficients[-1, 1])
+p_vals = unname(summary(model5)$coefficients[-1, 4])
+```
+
+- `school`: indicates that students from Mousinho da Silveira perform `estimates[1]` better then students from Gabriel Pereira, and the value is not significantly different from zero (p-value = `p_vals[1]`). It makes sense because while there may be some descrepancies between two schools, they should provide similar education resources to students. 
+- `sex`: indicates that males on average perform `estimates[2]` better than females, and the value is not significantly different from zero (p-value = `p_vals[1]`) 
+- `Mjob`: indicates that compared to students whose mother does not have a job, those whose mother has a health related job perform `estimates[3]` better (p-value = `p_vals[3]`), those whose mother has a other job perform `estimates[4]` better (p-value = `p_vals[4]`), those whose mother has a civil services job perform `estimates[5]` better (p-value = `p_vals[5]`), those whose mother has a home job perform `estimates[6]` better (p-value = `p_vals[6]`). Out of the four estimates, those whose mother has a health care related job and civil services job are significantly different from zero. 
+- `Fjob`: indicates that compared to students whose father does not have a job, those whose father has a health related job perform `estimates[7]` better (p-value = `p_vals[7]`), those whose father has a other job perform `estimates[8]` better (p-value = `p_vals[8]`), those whose father has a civil services job perform `estimates[9]` better (p-value = `p_vals[9]`), those whose mother has a home job perform `estimates[10]` better (p-value = `p_vals[10]`). Out of the four estimates, none of them are significantly different from zero. 
+- `studytime`: indicates that for every increased unit of studytime, students perform `estimates[11]` better, and the value is significantly different from zero (p-value = `p_vals[11]`). This makes sense because the more time students study, the better they are expected to perform. 
+- `failures`: indicates that students who have failed once more in the past performs `estimates[12]` points better, and the value is significantly different from zero (p-value = `p_vals[12]`). It makes sense because students who failed more times in the past tend to perform worse in future exams. 
+- `famsup`: indicates that students who receive family educational support perform `estimates[13]` points better, and the value is not significantly different from zero (p-value = `p_vals[13]`). It is a surprising result because students who receive additional support are expected to perform better. 
+- `schoolsup`: indicates that students who receive extra education support perform `estimates[14]` points better, and the value is significantly different from zero (p-value = `p_vals[14]`). It is a surprising result because students who receive additional school support are expected to perform better. 
+- `paid`: indicates that students who receive extra paid support perform `estimates[15]` points better, and the value is not significantly different from zero (p-value = `p_vals[15]`). It is a surprising result because students who receive additional paid support are expected to perform better, even though the value is not significant. 
+- `internet`: indicates that students with internet perform `estimates[16]` points better, and the value is not significantly different from zero (p-value = `p_vals[16]`). It is not surprising because students whose house has internet tend to have more educational resources. 
+- `goout`: indicates that students who go out with their friends frequently perform `estimates[17]` better, and the value is significantly different from zero (p-value = `p_vals[17]`). It makes sense because students who go out with friends a lot tend to spend less time studing. However, as indicated in the previous section, study time does not have a huge impact on students' final grade. 
+- `health`: indicates that students who are healthier for one unit perform `estimates[18]` better, and the value is significantly different from zero (p-value = `p_vals[18]`). It is surprising because students who are healthier are expected to perform better. 
+- `absences`: indicates that students who are abscent for one more class perform `estimates[19]` better, and the value is significantly different from zero (p-value = `p_vals[19]`). It is not surprising because students who are abscent for more classes are expected to perform worse. 
+
+Even though not all the variables above are significantly different from zero, we can conclude that at least one (likely more) variable is significant from the F-statistic, which has a significant p-value. 
+
+#### 3.3 Prediction vs. Actual value 
+
+```{r}
+y_hat = predict(model5) 
+y = data$G3 
+plot(y, y_hat, col = 'blue', pch = 20, xlab = 'Actual value', ylab = 'Predicted value', 
+     xlim = c(0, 20), ylim = c(0, 20), main = 'Actual value vs. Predicted value') 
+abline(0, 1, col = 'red')
+```
+
+The plot above showed a slightly positive correlation between the predicted value and the actual value. It also pointed out a significant problem from the model, which is the predicted values are "capped" around 15. We can consider transforming some predictors, or including variables from the other subject. 
+
+#### 3.4 Estimated Coefficients and Standard Error 
+
+```{r, echo = FALSE}
+names = names(coef(model5))[-1] 
+coefficients = round(unname(summary(model5)$coefficients[-1, 1] ), 4) 
+errors = round(unname(summary(model5)$coefficients[-1, 2] ), 4) 
+t_value = round(unname(summary(model5)$coefficients[-1, 3] ), 4) 
+p_value = round(unname(summary(model5)$coefficients[-1, 4] ), 4) 
+df = data.frame("Variables" = names, "Est Coefficients" = coefficients, "Errors" = errors, "t_value" = t_value, "p_value" = p_value)
+kable(df) %>% kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+```
+
+```{r}
+coefs = as.data.frame(summary(model5)$coefficients[-1, 1:2]) 
+names(coefs)[2] = 'se' 
+coefs$vars = rownames(coefs) 
+ggplot(coefs, aes(vars, Estimate)) + 
+geom_errorbar(aes(ymin=Estimate - 1.96*se, ymax=Estimate + 1.96*se), lwd=1, colour="red", width=0) +
+geom_errorbar(aes(ymin=Estimate - se, ymax=Estimate + se), lwd=1.5, colour="blue", width=0) +
+geom_point(size=2, pch=21, fill="yellow")
+```
+
+At a significance level of $\alpha = 0.05$, variables `Mjobhealth`, `Mjobservices`, `studytime`, `failures`, `schoolsupyes`, `goout`, `health`, `absences` are significant. Among the variables above, `failures`, `schoolsupyes`, `goout`, `absences` are the most significant, indicating that there is a strong influence on the final grade from these two variables. 
+
+#### 3.5 Residuals 
+
+```{r}
+resid = summary(model5)$residuals 
+hist(resid, col = 'blue', main = 'Histogram of residuals', xlab = 'Residuals') 
+```
+
+The residuals have an average close to zero, and roughly follow a normal distribution. 
+
+```{r}
+plot(data$G3, resid, xlab = 'Actual values', ylab = 'Residuals', col = 'blue', 
+     main = 'Actual values vs. Residuals', ylim = c(-15, 15), pch = 20)
+abline(h=0, col = 'red') 
+```
+
+The graph above gives us useful hints on the low accuracy of our model. Heteroscedascity is clearly an issue of the model, as residuals are not consistent accross the x-axis. When the actual values are low, the model tends to overestimate; when the actual values are high, the model tends to underestimate. As the actual value increases, the variance of residuals also seem to decrease. We believe that transformation of predictors may help improve the accuracy. 
+
+#### 3.6 KNN regression 
+
+First, we convert the factors into numerics for KNN. The minus one is simply to match the factors (which by default starts at 1 in R) with the dummy variables (which are 0 or 1)
+
+```{r}
+selected = c(1, 2, 9, 10, 14, 15, 16, 17, 18, 22, 26, 29, 30) 
+for (i in selected) { 
+  data[, i] = as.numeric(factor(data[, i])) - 1 
+} 
+```
+
+Second, we partition the dataset into training and testing datasets with the same predictors as the linear regression we had above. 
+
+```{r}
+set.seed(2020) 
+rand = sample(1:nrow(data), 0.8 * nrow(data)) 
+train_dataset = data[rand, selected] 
+test_dataset = data[-rand, selected] 
+train_cl = data[rand, 33] 
+test_cl = data[-rand, 33] 
+```
+
+Define MSE: 
+
+```{r}
+mse = function(y_actual, y_predicted) { 
+  sum = 0 
+  for (i in 1:length(y_actual)) { 
+    sum = sum + (y_actual[i] - y_predicted[i]) ^ 2 
+  } 
+  sum / length(y_actual) 
+  } 
+```
+
+Third, we calculate the mean squared error for 1 to 20 nearest neighbors. 
+
+```{r}
+mses = rep(0, 20) 
+set.seed(2020) 
+for (i in 1:20) { 
+  model = knn(train_dataset, test_dataset, cl = train_cl, k = i) 
+  model = as.numeric(model) 
+  mses[i] = mse(test_cl, model)
+} 
+```
+
+We get the following graph: 
+
+```{r}
+plot(mses, type = 'l', col = 'blue', xlab = '# of nearest neighbors', ylab = 'Mean squared errors', main = '# of nearest neighbors vs. MSE')
+```
+
+```{r}
+which.min(mses)
+```
+
+```{r}
+mses[which.min(mses)] 
+```
+
+The KNN model reachest the lowest MSE at 2 nearest neighbors. 
+```{r}
+mse(data$G3, predict(model5) )
+```
+
+Compared to the best linear regression, which has a MSE of `7.11`, the KNN model with `5` nearnest neighbors performs worse with a lower MSE at `23.46`.  
+
+## Report 3 
+
+#### 3.0 Introduction  
+
+As shown in the previous two reports, the adjusted R-squared are relatively low due to the difficulty of predicting students performance solely based on how much time they study, parents' job and education, and additional factors other than their previous grades. As suggested by a grader, the first and second midterm grades will be used to predict the final grade. Even though the first and second midterm grades account for part of the final grade, it provides useful prediction on student performance on the final grade. 
+
+Using the step function we were able to obtain a new model, which yields an adjusted R-squared of `0.8344`. 
+
+#### 3.1 Cross-Validation 
+
+We first load the data and partition them into training (80%) and testing (20%) datasets. 
+```{r}
+data = read.csv('student-mat.csv', sep = ';') 
+data = data[data$G3 > 0, ]
+set.seed(2020) 
+train = data %>% sample_n(dim(data)[1] * 0.8) 
+test = data %>% setdiff(train) 
+```
+
+Second, we train the model based on the training set, and used the testing dataset to check its performance. 
+```{r}
+model = lm(G3 ~ school + age + activities + romantic + famrel + Walc + absences + G1 + G2, train) 
+predictions = predict(model, test) 
+mean((test$G3 - predictions)^2)
+```
+
+We can see that the MSE of the cross-validation is relatively small.
+
+#### 3.2.1 Ridge regression 
+
+##### Question 2a 
+
+We first setup `x` and `y` to perform the ridge regression. `x` includes all variables except for the dependent variable. `grid` covers a wide range of $\lambda$s. 
+```{r}
+x = model.matrix(G3 ~ ., data)[, -1] 
+y = data$G3 
+
+grid = 10^seq(10, -2, length = 100)
+ridge_mod = glmnet(x, y, alpha = 0, lambda = grid)
+```
+
+Then we use cross validation to find the flexibility of the model. 
+```{r}
+set.seed(2020) 
+index = createDataPartition(data$G3, p = 0.8, list = F) 
+train = data[index, ] 
+test = data[-index, ] 
+
+x_train = model.matrix(G3 ~ .,train)[ , -1] 
+x_test = model.matrix(G3 ~ .,test)[ , -1]
+y_train = train$G3
+y_test = test$G3
+```
+
+```{r}
+set.seed(2020) 
+cv.out = cv.glmnet(x_train, y_train, alpha = 0) 
+bestlam = cv.out$lambda.min 
+bestlam 
+```
+
+##### Question 2b 
+
+```{r}
+cv.out
+```
+
+As shown above, the $\lambda$ has a standard error of `0.07679`. The $\lambda$ within one standard error is $(0.23601, 0.38959)$. 
+
+##### Question 2c 
+
+```{r}
+plot(cv.out) 
+```
+The figure above shows the cross-validation error, in which the chose $\lambda$ is labeled as a vertical line (the left one). 
+
+##### Question 2d 
+
+```{r}
+out = glmnet(x, y, alpha = 0) 
+plot(out, xvar = "lambda") 
+```
+
+The plot above shows how the coefficients vary by different $\lambda$s. As $\lambda$s increase, the coefficients approach closer to zero. 
+
+##### Question 2e 
+
+```{r}
+predict(out, type = 'coefficients', s = bestlam)
+```
+
+The coefficients correspond to the chosen $\lambda$. 
+
+##### Question 2f 
+
+```{r}
+ridge_pred = predict(ridge_mod, s = bestlam, newx = x_test) 
+mean((ridge_pred - y_test)^2) 
+```
+
+MSE of testing subset is `0.6997198`. 
+
+##### Question 2g 
+
+```{r}
+model_full = lm(G3 ~ ., data) 
+mean((predict(model_full, newdata = test) - y_test)^2) 
+```
+
+```{r}
+model = lm(G3 ~ school + age + activities + romantic + famrel + Walc + absences + G1 + G2, data) 
+mean((predict(model, newdata = test) - y_test)^2) 
+```
+
+Compared to the full and best linear model, the ridge regression has a slightly higher MSE on the testing dataset, even though all three models have very similar testing MSE. 
+
+#### 3.2.2 Lasso Regression 
+
+##### Question 2a 
+
+The steps are mostly identical to that of the Ridge regression. 
+```{r}
+lasso_mod = glmnet(x, y, alpha = 1, lambda = grid)
+set.seed(2020) 
+cv.out = cv.glmnet(x_train, y_train, alpha = 1) 
+bestlam = cv.out$lambda.min 
+bestlam 
+```
+
+##### Question 2b 
+
+```{r}
+cv.out
+```
+
+As shown above, the $\lambda$ has a standard error of `0.6946`. The $\lambda$ within one standard error is $(0.00349, 0.13445)$. 
+
+##### Question 2c 
+
+```{r}
+plot(cv.out) 
+```
+The figure above shows the cross-validation error, in which the chosen $\lambda$ is labeled as a vertical line (the right one). 
+
+##### Question 2d 
+
+```{r}
+out = glmnet(x, y, alpha = 1) 
+plot(out, xvar = "lambda") 
+```
+
+The plot above shows how the coefficients vary by different $\lambda$s. As $\lambda$s increase, the coefficients approach closer to zero. 
+
+##### Question 2e 
+
+```{r}
+predict(out, type = 'coefficients', s = bestlam)
+```
+
+The coefficients correspond to the chosen $\lambda$. 
+
+##### Question 2f 
+
+```{r}
+lasso_pred = predict(lasso_mod, s = bestlam, newx = x_test) 
+mean((lasso_pred - y_test)^2) 
+```
+
+MSE of testing subset is `0.683`. 
+
+##### Question 2g 
+
+Compared to the full and best linear model, the lasso regression has a slightly higher MSE on the testing dataset, even though all three models have very similar testing MSE. 
+
+#### 3.3 Regression tree 
+
+##### Question 3a 
+
+We first plot a big tree. 
+
+```{r}
+set.seed(2020) 
+train = data %>% sample_frac(0.8) 
+test = data %>% setdiff(train) 
+tree = tree(G3 ~ ., data) 
+plot(tree) 
+text(tree, pretty = 0)
+```
+
+##### Question 3b 
+
+```{r}
+predictions = predict(tree, newdata = test) 
+mean((predictions - test$G3)^2) 
+```
+
+As shown above, the testing MSE of the tree is `0.911`, which is higher than all the previous models. 
+
+##### Question 3c 
+
+```{r}
+cv.performance = cv.tree(tree) 
+plot(cv.performance$size, cv.performance$dev, type = 'b', xlab = 'size', ylab = 'deviance', main = 'Tree size vs. Deviance') 
+```
+
+Using a cross-validation, a 8-node tree is selected. 
+
+##### Question 3d 
+
+We can prune the tree as follows: 
+
+```{r}
+pruned = prune.tree(tree, best = 7) 
+plot(pruned)
+text(pruned, pretty = 0) 
+title('Pruned regression tree') 
+```
+
+##### Question 3e 
+
+The pruned tree follows the following splitting (In breadth-first search order): 
+
+0. Is `G2` less than `12.5`? If so, proceed to the left subtree (1); otherwise, proceed to the right subtree (2). 
+1. Is `G2` less than `9.5`? If so, proceed to the left subtree (3); otherwise, proceed to the right subtree (4). 
+2. Is `G2` less than `15.5`? If so, proceed to the left subtree (5); otherwise, the tree predicts a value of `17.36`. 
+3. Is `G2` less than `7.5`? If so, the tree predicts a value of `6.486`; otherwise, the tree predicts a value of `8.89`. 
+4. Is `G2` less than `11.5`? If so, the tree predicts a value of `10.54`; otherwise, the tree predicts a value of `11.93`. 
+5. Is `G2` less than `14.5`? If so, the tree predicts a value of `13.5`; otherwise, the tree predicts a value of `15.29`. 
+
+Interestingly, all splits are based on `G2`, which indicates that `G2` has a profound impact on the final grade, which is also an expected result. 
+
+##### Question 3f 
+
+While the pruned tree is easier to interpret, it has a higher MSE compared to previous models (OLS, Lasso and Ridge)
+
+## Report 4 
+
+#### Question 1 
+
+We first partition the dataset into training and testing. 
+```{r}
+data = read.csv('student-mat.csv', sep = ';')
+data = data[data$G3 > 0, ]
+set.seed(2020) 
+train = data %>% sample_frac(0.5)
+test = data %>% setdiff(train) 
+```
+
+We train the model and look at the training MSE to evaluate the accuracy of the model. 
+```{r}
+set.seed(2020) 
+model = randomForest(G3 ~ ., data = train, mtry = ncol(train) - 1, importance = TRUE)
+predictions = predict(model, newdata = test) 
+round(mean((predictions - test$G3)^2), 3)
+```
+
+#### Question 2 
+
+##### Question 2a. 
+
+Out-of-bag error rate as a function of number of trees: 
+
+```{r}
+model = randomForest(G3 ~ ., data = train, mtry = ncol(train) - 1, importance = TRUE, ntree = 400)
+plot(model, main = "Number of trees vs. Out of bag error rate") 
+```
+
+##### Question 2b 
+
+```{r}
+predictions = predict(model, newdata = test) 
+ggplot() + 
+  geom_point(aes(x = test$G3, y = predictions)) + 
+  geom_abline() + 
+  labs(x = "Actual values", y = "Predicted values", title = "Actual values vs. Predicted values") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+As shown above, the model did a decent job in predicting the values. 
+
+##### Question 2c 
+
+```{r}
+round(mean((predictions - test$G3)^2), 3)
+```
+
+As shown above, the MSE is slightly higher than the MSEs from the Lasso/Ridge models in the last report. 
+
+##### Question 2d 
+
+```{r}
+varImpPlot(model) 
+```
+
+As shown above, `G2` has a very high importance in the model. 
+
+#### Question 3 
+
+##### Question 3a 
+
+Out-of-bag error rate as a function of number of predictions: 
+
+```{r}
+k = ncol(train) - 1 
+oob_error = double(k) 
+test_error = double(k) 
+
+set.seed(2020) 
+for (mtry in 1:k) { 
+  model = randomForest(G3 ~ ., data = train, mtry = mtry, ntree = 400) 
+  oob_error[mtry] = model$mse[400] 
+  
+  predictions = predict(model, test) 
+  test_error[mtry] = with(test, mean((test$G3 - predictions) ^ 2)) 
+} 
+
+plot(oob_error, main = "Number of predictions vs. Out-of-bag error rate") 
+```
+
+##### Question 3b 
+
+```{r}
+which.min(oob_error) 
+```
+
+Out-of-bag error minimizes at 27 predictors. 
+
+##### Question 3c 
+
+```{r}
+model = randomForest(G3 ~ ., data = train, mtry = 27, ntree = 400) 
+predictions = predict(model, newdata = test) 
+```
+
+
+```{r}
+predictions = predict(model, newdata = test) 
+ggplot() + 
+  geom_point(aes(x = test$G3, y = predictions)) + 
+  geom_abline() + 
+  labs(x = "Actual values", y = "Predicted values", title = "Actual values vs. Predicted values") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+The model did a decent job in predicting the values. 
+
+##### Question 3d 
+
+```{r}
+round(mean((predictions - test$G3)^2), 3) 
+```
+
+MSE for the random forest regression is still slightly higher than the MSE of Lasso/Ridge regression, but is also slightly higher than the bagging model. 
+
+##### Question 3e 
+
+```{r}
+varImpPlot(model) 
+```
+
+As shown above, `G2` is very important in the model. 
+
+##### Question 3f 
+
+```{r}
+matplot(1:mtry , cbind(oob_error,test_error), pch=20 , col=c("red","blue"),type="b",ylab="Mean Squared Error",xlab="Number of Predictors Considered at each Split")
+legend("topright",legend=c("Out of Bag Error","Test Error"),pch=19, col=c("red","blue"))
+title('Number of predictors considered at each split vs. MSE')
+```
+
+As shown above, the two graphs share a similar pattern. 
+
+#### Question 4 
+
+##### Question 4a 
+
+```{r}
+set.seed(2020) 
+model = gbm(G3 ~ ., 
+            data = train, 
+            distribution = "gaussian", 
+            n.trees = 5000, 
+            interaction.depth = 4)
+```
+
+```{r}
+predictions = predict(model, newdata = test, n.trees = 5000) 
+ggplot() + 
+  geom_point(aes(x = test$G3, y = predictions)) + 
+  geom_abline() + 
+  labs(x = "Actual values", y = "Predicted values", title = "Actual values vs. Predicted values") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+The model performed worse in predicting the values. 
+
+##### Question 4b 
+
+```{r}
+round(mean((predictions - test$G3)^2), 2) 
+```
+
+The MSE is indeed higher than all previous models (Lasso / Ridge / Bagging / RandomForest). 
+
+##### Question 4c 
+
+```{r}
+importance = summary.gbm(model, plotit = FALSE) 
+df = data.frame(
+  name = importance$var, 
+  value = importance$rel.inf
+)
+
+ggplot(df, aes(x = reorder(name, value), y = value)) + 
+  geom_bar(stat = "identity") + 
+  labs(x = "Predictors", y = "Importance", title = "Relative importance of each predictor") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  coord_flip()
+```
+
+As expected, `G2` still had a huge impact on the model. 
+
+#### Question 5 
+
+##### Question 5a 
+
+Due to how XGB matrices accept data, some of the columns were removed. However, this should not make a huge difference because the most important factor `G2` is still in the model. 
+
+```{r}
+numerics = c("age", "Medu", "Fedu", "traveltime", "studytime", "failures", "famrel", "freetime", "goout", "Dalc", "Walc", "health", "abscences", "G1", "G2")  
+Y_train = as.matrix(train[, "G3"]) 
+X_train = as.matrix(train[names(train) %in% numerics])
+dtrain = xgb.DMatrix(data = X_train, label = Y_train) 
+X_test = as.matrix(test[names(train) %in% numerics]) 
+```
+
+```{r}
+set.seed(2020) 
+model = xgboost(data = dtrain, 
+                max_depth = 2, 
+                eta = 0.1, 
+                nrounds = 40, 
+                lambda = 0, 
+                print_every_n = 10, 
+                objective = "reg:linear")
+```
+
+```{r}
+predictions = predict(model, X_test) 
+ggplot() + 
+  geom_point(aes(x = test$G3, y = predictions)) + 
+  geom_abline() + 
+  labs(x = "Actual values", y = "Predicted values")
+```
+
+The model did a decent job in predicting the values. 
+
+##### Question 5b 
+
+```{r}
+round(mean((predictions - test$G3)^2), 3) 
+```
+
+The MSE is lower than Bagging, randomforest, boosting, but is still higher than Lasso and Ridge regressions. 
+
+##### Question 5c 
+
+```{r}
+importance = xgb.importance(colnames(X_train), model = model) 
+xgb.plot.importance(importance, rel_to_first = TRUE, xlab = "Relative Importance")
+```
+
+`G2` had a huge importance in the model. 
+
+#### Question 6 (extra credit) 
+
+##### 6.1 
+
+```{r}
+min_shrinkage = 0 
+min_trees = 0 
+min_interaction = 0 
+min_mse = 10000 
+set.seed(2020) 
+
+for (i in seq(0.001, 0.01, 0.001)) { 
+  for (j in seq(1000, 5000, 1000)) { 
+    for (k in seq(1, 5)) { 
+      model = gbm(G3 ~ ., 
+                  data = train, 
+                  distribution = "gaussian", 
+                  shrinkage = i, 
+                  n.trees = j, 
+                  interaction.depth = k) 
+      predictions = predict(model, newdata = test, n.trees = j) 
+      mse = mean((predictions - test$G3)^2) 
+      if (mse < min_mse) { 
+        min_shrinkage = i 
+        min_trees = j 
+        min_interaction = k 
+        min_mse = mse 
+      } 
+    }   
+  } 
+} 
+```
+
+```{r}
+c(min_shrinkage, min_trees, min_interaction) 
+```
+
+```{r}
+model = gbm(G3 ~ ., 
+            data = train, 
+            distribution = "gaussian", 
+            shrinkage = min_shrinkage, 
+            n.trees = min_trees, 
+            interaction.depth = min_interaction)
+```
+
+
+```{r}
+predictions = predict(model, newdata = test, n.trees = 2000) 
+ggplot() + 
+  geom_point(aes(x = test$G3, y = predictions)) + 
+  geom_abline() + 
+  labs(x = "Actual values", y = "Predicted values", title = "Actual values vs. Predicted values") + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
+
+The model did a better job in predicting the value, but still performs worse than Ridge / Lasso regression. 
+
+##### Question 6.2 
+
+```{r}
+round(mean((predictions - test$G3)^2), 3)
+```
+
+The MSE for the optimized model is lower than the MSE in question 4, but is still higher than Ridge / Lasso regression. 
+
+##### Question 6.3 
+
+```{r}
+importance = summary.gbm(model, plotit = FALSE) 
+df = data.frame(
+  name = importance$var, 
+  value = importance$rel.inf
+)
+
+ggplot(df, aes(x = reorder(name, value), y = value)) + 
+  geom_bar(stat = "identity") + 
+  labs(x = "Predictors", y = "Importance", title = "Relative importance of each predictor") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  coord_flip()
+```
+
+As shown above, `G2` still has a dominate importance in the model. 
+
+### Conclusion 
+
+The two previous reports show that it is nearly impossible to achieve a high accuracy rate without including the first and second midterm grades. By adding these two variables, the accuracy increased significantly, and the MSE also reduced. This however adds more limitation to prediction, as teachers will need to obtain some grade in the course to predict the final grade, as opposed to predict purely based on factors that can be obtained before the semester. 
+
+Using the skrinkage regressions and trees, we were able to obtain different models. Despite the fact that the OLS performed the best, other models provided other insights and unique advantages. After adding the two variables, the models performed significantly better. After exploring other prediction methods, we found out that 

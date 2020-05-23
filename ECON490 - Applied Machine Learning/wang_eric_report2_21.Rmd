@@ -1,0 +1,378 @@
+---
+title: "Factors of Student Performance"
+author: "Wei-Chen (Eric) Wang"
+date: "Due 3/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(ggplot2) 
+library(class) 
+library(knitr) 
+library(kableExtra)
+library(dplyr) 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### 0. Note on this report 
+
+- Significance level is set at 0.05 unless specified otherwise. 
+- My apologies in advance for the latex plain output (That is, you may see the dollar sign and other latex commands). It seemed that it is a common issue when R outputs a PDF file for some versions of rendering, and I have yet found a way to fix this. 
+
+### 1. Introduction 
+This project sought to explore the potential factors that could impact students' academic performance. The dataset was obtained from the [machine learning repository](https://archive.ics.uci.edu/ml/datasets/Student+Performance#) at the University of California, Irvine. The data were collected using school reports and questionnaires from two Portuguese secondary schools. Attributes include grades, demographic, social and school related features. 
+
+Two datases were provided corresponding to the data of two subjects, Mathematics and Portuguese. They were merged by 13 attributes, which were specified in the repository. After merging them, a dataset with 382 student records and 54 attributes was obtained. This study is useful for teachers to identify how to enhance students' learning experience, and support students who are falling behind. 
+
+### 2. First report 
+
+#### 2.1 Variables 
+
+#### 2.1.1 Response variables 
+
+- `G3`: student final grade (numeric: from `0` to `20`) 
+
+#### 2.1.2 Predictor variables 
+
+```{r, echo = FALSE}
+variables = c('school', 'sex', 'age', 'address', 'famsize', 'Pstatus', 'Medu', 'Fedu', 'Mjob', 'Fjob', 'reason', 'guardian', 'traveltime', 'studytime', 'failures', 'schoolsup', 'famsup', 'paid', 'activities', 'nursery', 'higher', 'internet', 'romantic', 'fmarel', 'freetime', 'goout', 'Dalc', 'Walc', 'health', 'absences') 
+type = c('binary', 'binary', 'numeric', 'binary', 'binary', 'binary', 'numeric', 'numeric', 'nominal', 'nominal', 'nominal', 'nominal', 'numeric', 'numeric', 'numeric', 'binary', 'binary', 'binary', 'binary', 'binary', 'binary', 'binary', 'binary',  'numeric',  'numeric',  'numeric',  'numeric',  'numeric',  'numeric',  'numeric') 
+description = c('student\'s school', 'student\'s sex', 'student\'s age', 'student\'s home address type', 'family size', 'parent\'s cohabitation status', 'mother\'s education', 'father\'s education', 'mother\'s job', 'father\'s job', 'reason to choose this school', 'student\'s guardian', 'home to school travel time', 'weekly study time', 'number of past class failures', 'extra educational support', 'family educational support', 'extra paid classes within the course subject (Math or Portuguese)', 'extracurricular activities', 'attended nursery school', 'wants to take higher education', 'Internet access at home', 'in a romantic relationship', 'quality of family relationships', 'free time after school', 'going out with friends', 'workday alcohol consumption', 'weekend alcohol consumption', 'current health status', 'number of school absences') 
+possible = c('`GP` for Gabriel Pereira, `MS` for Mousinho da Silveira', '`F` for female, `M` for male', '`15` to `22`', '`U` for urban, `R` for rural', '`LE3` forr less or equal to `3`, `GT3` for greater than `3`', '`T` for living together, `A` for apart', '`0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education', '`0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education', '`teacher` for teacher, `health` for health care related, `services` for civil services, `at_home` for at home, `other` for others', '`teacher` for teacher, `health` for health care related, `services` for civil services, `at_home` for at home, `other` for others', '`home` for close to home, `reputation` for school reputation, `course` for course preference, `other` for others', '`mother`, `father` or `other`', '`1` for less than 15 min, `2` for 15 to 30 min, `3` for 30 min to 1 hour, `4` for more than 1 hour', '`1` for less than 2 hours, `2` for 2 to 5 hours, `3` for 5 to 10 hours, `4` for more than 10 hours', '`n` for 1 <= n < 3, 3 for n >= 3', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', '`yes` or `no`', 'from `1` for very bad to `5` for excellent', 'from `1` for very low to `5` for very high', 'from `1` for very low to `5` for very high', 'from `1` for very low to `5` for very high', 'from `1` for very low to `5` for very high', 'from `1` for very bad to `5` for very good', 'from `0` to `93`') 
+df = data.frame('Variables' = variables, 'Type' = type, 'Description' = description, 'Possible Values' = possible) 
+kable(df) %>% kable_styling(position = "left") 
+```
+
+Note that the following two variables were expected to be highly correlated to `G3`, because the first and second period grade had significant impact on the final grade. 
+
+```{r, echo = FALSE}
+variables = c('G1', 'G2') 
+type = c('numeric', 'numeric') 
+description = c('first period grade', 'second period grade')
+possible = c('from `0` to `20`', 'from `0` to `20`') 
+df = data.frame('Variables' = variables, 'Type' = type, 'Description' = description, 'Possible Values' = possible) 
+kable(df) %>% kable_styling(position = "left") 
+```
+
+### 2.2 Potential predictor variables 
+
+Since the dataset was obtained by merging two datasets, columns not used for merging resulted in additional columns. Most predictor variables, such as weekly hours spent on studying, were expected to have similar impacts on each subject. For the following graphs, data from mathematics were used if the variable was not merged. I choose to include variables: `failures`, `goout`, `studytime`, and `abscences` because I expect them to help explain student performance. Note that these four variables were all discrete. 
+
+```{r}
+# Import data and extract required information 
+data = read.csv('student.csv')
+df = data.frame('G3' = data$G3.x, 
+                'failures' = data$failures.x, 
+                'goout' = data$goout.x, 
+                'studytime' = data$studytime.x, 
+                'abscences' = data$absences.x) 
+```
+
+```{r}
+ggplot(df, aes(y=G3)) + geom_boxplot(fill = 'orange', color = 'blue') + ggtitle("Boxplot of students' final grade") + ylab("Students' Final Grade") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplot above showed the distribution of final grades. Note that the possible score ranges from `0` to `20`.  
+
+```{r}
+ggplot(df, aes(y=failures)) + geom_boxplot(fill = 'orange', color = 'blue') + ggtitle("Boxplot of students' failure") + ylab("Students' failure") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplot above shows the distribution of failures. Note that this does not look like a box plot because more than `75%` of students did not fail even once in the past. The three points corresponds to students who failed once, twice or more than three times in the past, even though they combined accounted for less than a quarter of the total observations. Most of the students did not fail in any past classes. Recall that `3` represented students who failed 3 or more classes. 
+
+```{r}
+ggplot(df, aes(y=goout)) + geom_boxplot(fill = 'orange', color = 'blue') + ggtitle("Boxplot of students' go out frequency") + ylab("Students' go out frequency") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplot above showed the distribution of how frequently students went out with friends, while most students spent an intermediate amount of time with their friends. Recall that `goout` ranged from `1` (very low) to `5` (very high). 
+
+```{r}
+ggplot(df, aes(y=studytime)) + geom_boxplot(fill = 'orange', color = 'blue') + ggtitle("Boxplot of students' study time") + ylab("Students' Study Time") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplot above showed the distribution of how much time students spent studying weekly. It indicated that most students study for less than `5` hours per week. Recall that for `studytime`, `1` represented students who spent less than 2 hours, and `2` represented students who spent 2 to 5 hours weekly. 
+
+```{r}
+ggplot(df, aes(y=abscences)) + geom_boxplot(fill = 'orange', color = 'blue') + ggtitle("Boxplot of students' Abscences") + ylab("Students' Abscences") + theme(plot.title = element_text(hjust = 0.5))
+```
+
+The boxplot above showed the distribution of abscences. While most students had less than `10` school abscences, there existed a fair amount of outliers. Interestingly, the individual who had the most abscent (93) did not perform significantly worse than other students. 
+
+### 2.3 Correlation 
+
+```{r}
+cor(df$G3, df$failures)
+```
+
+```{r}
+model = lm(G3~failures, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$failures, df$G3, main = 'Correlation between failures and final grade', xlab = 'Failures', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a negative correlation between `failures` and final grade. This was expected because students who failed more times in previous classes were less likely to perform well. 
+
+```{r}
+cor(df$G3, df$goout)
+```
+
+The value above indicates that there is a negative correlation between failures and final grade, which implies that more failures in past courses can lead to a decrease in the final grade. 
+
+```{r}
+model = lm(G3~goout, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$goout, df$G3, main = 'Correlation between go outs and final grade', xlab = 'Go outs', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a negative correlation between `goout` and final grade, even though the relationship was less significant. It showed a slight tendency that students who went out with friends frequently would perform worse. 
+
+```{r}
+cor(df$G3, df$studytime)
+```
+
+```{r}
+model = lm(G3~studytime, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$studytime, df$G3, main = 'Correlation between study time and final grade', xlab = 'Study time', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a positive correlation between study time and final grade. It was expected because students who spent more time studying were expected to perform better. 
+
+```{r}
+cor(df$G3, df$abscences)
+```
+
+```{r}
+model = lm(G3~abscences, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$abscences, df$G3, main = 'Correlation between abscences and final grade', xlab = 'Abscences', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above showed a slight tendency that students who were abscent for more classes could perform better. This was an unexpected result, even though the positive relationship was insignificant. 
+
+### 3. Report 2 
+
+#### 3.1 Linear regressions 
+
+In this section, we explore the potential factors that can influence a student's final grade in mathematics. 
+
+##### 3.1.1. First model 
+
+Intuitively, students' grades in their first and second period grade has significant impact on their final grade. If a student performed well in the beginning and middle of the semester, he is likely to receive a good final grade. We run the model: 
+
+$$Y = \beta_0 + \beta_1G_1 + \beta_2G_2 + \epsilon$$ 
+where $Y$ is the final grade in math, $G_1$ and $G_2$ are the first and second period grades, $\epsilon$ is the error term, and $\beta_i$ are the coefficients. 
+
+```{r}
+model1 = lm(G3.x ~ G1.x + G2.x, data = data) 
+summary(model1)$adj.r.squared 
+```
+
+Even though the adjusted $R^2$ is high, there exists a collineariy problem because the first and second period grades directly count towards part of the final grade. Furthermore, this project is more interested in how other student factors, such as the time they spent on studying, can impact their final grade. In most cases, we would not have students' first and second period grade before we make a prediction. 
+
+##### 3.1.2 Second model 
+
+Among all the parameters, I believe that the time they spent on studying and the number of times they failed the course have the most significant impact on students' final grade. Therefore, we run the model: 
+
+$$Y = \beta_0 + \beta_1S + \beta_2F + \epsilon$$ 
+where $S$ is the time students spent on studying, and $F$ is the number of times they failed the course. 
+
+```{r}
+model2 = lm(G3.x ~ studytime.x + failures.x, data = data) 
+summary(model2)$adj.r.squared 
+```
+
+Unfortunately, the adjusted $R^2$ indicated that the two variables do not explain much about the final grade. Therefore, we consider including more variables in the following models. 
+
+##### 3.1.3 Third model 
+
+Even the second model yielded a low adjusted $R^2$ squared, the second variable is significant at the level of $\alpha=0.05$. Therefore, we try the model with only one predictor, namely: 
+
+$$Y = \beta_0 + \beta_2F + \epsilon$$ 
+
+```{r}
+model3 = lm(G3.x ~ failures.x, data = data) 
+summary(model3)$adj.r.squared 
+```
+
+Here, we can see that the adjusted $R^2$ increased slightly. It implied an insignificant relationship between how much time students spent studying and their final grade. Therefore, we include $F$ in future models, while excluding $S$. 
+
+##### 3.1.4 Fourth model 
+
+We include more variables to create a more complicated model: 
+
+$$Y = \beta_0 + \beta_1F + \beta_2ME + \beta_3FE + \beta_4G + \beta_5T + \epsilon$$ 
+
+where $ME$ is the mother's education, $FE$ is the father's education, $G$ is the frequency of going out with friends, and $T$ is the travel time from home to school. 
+
+```{r}
+model4 = lm(G3.x ~ failures.x + Medu + Fedu + goout.x + age + traveltime.x, data=data) 
+summary(model4)$adj.r.squared 
+```
+
+While the adjusted $R^2$ increased slightly, it is still far from desired. We will continue exploring other variables that may have an impact on the final grade. 
+
+##### Fifth model: 
+
+Using a full model with all $x$ variables (excluding $G1.x$, $G2.x$) and the step function, we try the following regression: 
+
+$$Y = \beta_0 + \beta_1S + \beta_2A + \beta_3FS + \beta_4ME + \beta_5T + \beta_6F + \beta_7H + \beta_8G+ \epsilon$$ 
+
+where $S$ is the dummy variable for sex ($1$ for male, $0$ for female), $A$ for age, $FS$ is the dummy variable for family size ($1$ for family size less than or equal to $3$, $0$ otherwise), $H$ is the dummy variable for wanting to take higher education ($1$ for yes, $0$ for no$). 
+
+```{r}
+model5 = lm(G3.x ~ sex + age + famsize + Medu + traveltime.x + failures.x + higher.x + goout.x, data = data) 
+summary(model5)$adj.r.squared 
+```
+
+With more variables, the adjusted $R^2$ increased to over $0.2$. While the value is still relatively low, it is the best model we can obtain so far. 
+
+#### 3.2 Best linear regression 
+
+```{r}
+summary(model5) 
+```
+
+Here, we briefly analyze the effects and interpretations of each predictor. 
+
+- `sex`: it indicates that males on average perform $1.34$ points better than females, and the value is significantly different from zero (p-value = 0.003). 
+- `age`: it indicates that students perform $0.38$ points worse for every year older, and the value is significantly different from zero (p-value = 0.047). It makes sense because as students become older, the exams are also getting harder. 
+- `famsize`: it indicates that students in family sizes of 3 or less perform $0.997$ points better than those living in family sizes of more than 3, and the value is significantly different from zero (p-value = 0.406). It makes sense because students living in a smaller family have less disturbance when studying. 
+- `Medu`: it indicates that students perform $0.377$ points higher for each higher level of mother's education (such as secondary education to higher education), and the value is not significantly different from zero (p-value = 0.074). It makes sense because students whose mother has a higher education tend to receive more resources, while it is not always the case. 
+- `traveltime`: it indicates that students who live further from the school tend to perform worse, and the value is not significantly different from zero (p-value = 0.135). It makes sense because students who live far from school may spend more time on traveling instead of studying. However, as indicated in the previous section, study time does not have a huge impact on students' final grade. 
+- `failures`: it indicates that students who have failed once more in the past performs $1.90$ points worse, and the value is significantly different from zero (p-value < 0.001). It is also likely the most significant predictor. It makes sense because students who failed more times in the past tend to perform worse in future exams. 
+- `higher`: it indicates that students who want to take higher education perform $2.32$ points better, and the value is significantly different from zero (p-value = 0.04). It makes sense because those who are pursuing higher education may be performing better in academics. 
+- `goout`: it indicates that students who go out with their friends frequently perform slightly worse, and the value is not significantly different from zero (p-value = 0.156). It makes sense because students who go out with friends a lot tend to spend less time studing. However, as indicated in the previous section, study time does not have a huge impact on students' final grade. 
+
+Even though not all the variables above are significantly different from zero, we can conclude that at least one (likely more) variable is significant from the F-statistic, which has a significant p-value. 
+
+#### 3.3 Prediction vs. Actual value 
+
+```{r}
+y_hat = predict(model5) 
+y = data$G3.x 
+plot(y, y_hat, col = 'blue', pch = 20, xlab = 'Actual value', ylab = 'Predicted value', 
+     xlim = c(0, 20), ylim = c(0, 20), main = 'Actual value vs. Predicted value') 
+abline(0, 1, col = 'red')
+```
+
+The plot above showed a slightly positive correlation between the predicted value and the actual value. It also pointed out a significant problem from the model, which is the predicted values are "capped" around 15. We can consider transforming some predictors, or including variables from the other subject. 
+
+#### 3.4 Estimated Coefficients and Standard Error 
+
+```{r, echo = FALSE}
+names = c('(Intercept)', 'sex', 'age', 'famsize', 'Medu', 'traveltime', 'failures', 'higher', 'goout') 
+coefficients = round(unname(summary(model5)$coefficients[, 1] ), 4) 
+errors = round(unname(summary(model5)$coefficients[, 2] ), 4) 
+t_value = round(unname(summary(model5)$coefficients[, 3] ), 4) 
+p_value = round(unname(summary(model5)$coefficients[, 4] ), 4) 
+df = data.frame("Variables" = names, "Est Coefficients" = coefficients, "Errors" = errors, "t_value" = t_value, "p_value" = p_value)
+kable(df) %>% kable_styling(bootstrap_options = "striped", full_width = F, position = "left")
+```
+
+At a significance level of $\alpha = 0.05$, variables `Medu`, `traveltime` and `goout` are not significant. Among the variables above, failures and sex are the most significant, indicating that there is a strong influence on the final grade from these two variables. 
+
+#### 3.5 Residuals 
+
+```{r}
+resid = summary(model5)$residuals 
+hist(resid, col = 'blue', main = 'Histogram of residuals', xlab = 'Residuals') 
+```
+
+The residuals have an average close to zero, and roughly follow a normal distribution. 
+
+```{r}
+plot(data$G3.x, resid, xlab = 'Actual values', ylab = 'Residuals', col = 'blue', 
+     main = 'Actual values vs. Residuals', ylim = c(-15, 15), pch = 20)
+abline(h=0, col = 'red') 
+```
+
+The graph above gives us useful hints on the low accuracy of our model. When the actual values are low, the model tends to overestimate; when the actual values are high, the model tends to underestimate. As the actual value increases, the variance of residuals also seem to decrease. We believe that transformation of predictors may help improve the accuracy. 
+
+#### 3.6 KNN regression 
+
+First, we convert the factors into numerics for KNN. The minus one is simply to match the factors (which by default starts at 1 in R) with the dummy variables (which are 0 or 1)
+
+```{r}
+selected = c(3, 4, 6, 8, 16, 18, 23, 27) 
+data[, 3] = as.numeric(factor(data[, 3])) - 1
+data[, 4] = as.numeric(factor(data[, 4])) - 1
+data[, 6] = as.numeric(factor(data[, 6])) - 1
+data[, 8] = as.numeric(factor(data[, 8])) - 1
+data[, 16] = as.numeric(factor(data[, 16])) - 1
+data[, 18] = as.numeric(factor(data[, 18])) - 1
+data[, 23] = as.numeric(factor(data[, 23])) - 1
+data[, 27] = as.numeric(factor(data[, 27])) - 1
+```
+
+Second, we partition the dataset into training and testing datasets with the same predictors as the linear regression we had above. 
+
+```{r}
+set.seed(2020) 
+rand = sample(1:nrow(data), 0.8 * nrow(data)) 
+train_dataset = data[rand, selected] 
+test_dataset = data[-rand, selected] 
+train_cl = data[rand, 54] 
+test_cl = data[-rand, 54] 
+```
+
+Define MSE: 
+
+```{r}
+mse = function(y_actual, y_predicted) { 
+  sum = 0 
+  for (i in 1:length(y_actual)) { 
+    sum = sum + (y_actual[i] - y_predicted[i]) ^ 2 
+  } 
+  sum / length(y_actual) 
+  } 
+```
+
+Third, we calculate the mean squared error for 1 to 20 nearest neighbors. 
+
+```{r}
+mses = rep(0, 20) 
+set.seed(2020) 
+for (i in 1:20) { 
+  model = knn(train_dataset, test_dataset, cl = train_cl, k = i) 
+  model = as.numeric(model) 
+  mses[i] = mse(test_cl, model)
+} 
+```
+
+We get the following graph: 
+
+```{r}
+plot(mses, type = 'l', col = 'blue', xlab = '# of nearest neighbors', ylab = 'Mean squared errors', main = '# of nearest neighbors vs. MSE')
+```
+
+```{r}
+which.min(mses)
+```
+
+
+```{r}
+mses[which.min(mses)] 
+```
+
+The KNN model reachest the lowest MSE at 19 nearest neighbors. 
+
+```{r}
+mse(data$G3.x, predict(model5) )
+```
+
+Compared to the best linear regression, which has a MSE of 17.15, the KNN model with 16 nearnest neighbors performs better with a lower MSE at 13.7013. We may need to consider using KNN or other methods to improve the accuracy rate. 
+
+### Conclusion 
+
+The low adjusted R-squared in the linear regressions indicate that linear regression may not be a good method, or too simple to explain the outcome. This makes sense because student grades tend to be dependent on their own ability to study instead of common parameters, such as age, number of absences or whether they are in a relationship. Furthermore, recall that most of the predictors were obtained from students filling out surveys, making the results extremely subjective. Middle school students can have very distinct definitions of  "going out with their friends frequently". 
+
+On the other hand, using a linear scale for predictors may not be ideal. For example, for the variable health, the difference between a value of 1 (very bad) and 2 (bad), and the difference between a value of 4 (good) and 5 (very good) can be very different and subjective. The KNN model provides an alternative method to build a model, and parameters for the other subject will also be used in future reports. 

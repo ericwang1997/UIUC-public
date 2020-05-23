@@ -1,0 +1,163 @@
+---
+title: "Factors of Student Performance"
+author: "Wei-Chen (Eric) Wang"
+date: "Due 2/12/2020"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+library(ggplot2) 
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Introduction 
+
+This project sought to explore the potential factors that could impact students' academic performance. The dataset was obtained from the [machine learning repository](https://archive.ics.uci.edu/ml/datasets/Student+Performance#) at the University of California, Irvine. The data were collected using school reports and questionnaires from two Portuguese secondary schools. Attributes include grades, demographic, social and school related features. Two datases were provided corresponding to the data of two subjects, Mathematics and Portuguese. They were merged by 13 attributes, which were specified in the repository. After merging them, a dataset with 382 student records and 54 attributes was obtained. 
+
+### Variables 
+
+#### Response variables 
+
+- `G3`: student final grade (numeric: from `0` to `20`) 
+
+#### Predictor variables 
+
+- `school`: student's school (binary: `GP` for Gabriel Pereira, `MS` for Mousinho da Silveira)
+- `sex`: student's sex (binary: `F` for female, `M` for male) 
+- `Age`: student's age (numeric: from `15` to `22`) 
+- `address` - student's home address type (binary: `U` for urban, `R` for rural) 
+- `famsize` - family size (binary: `LE3` forr less or equal to `3`, `GT3` for greater than `3`) 
+- `Pstatus` - parent's cohabitation status (binary: `T` for living together, `A` for apart) 
+- `Medu` - mother's education (numeric: `0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education) 
+- `Fedu` - father's education (numeric: `0` for none, `1` for primary education (4th grade), `2` for 5th to 9th grade, `3` for secondary education, `4` for higher education) 
+- `Mjob` - mother's job (nominal: `teacher` for teacher, `health` for health care related, `services` for civil services, `at_home` for at home, `other` for others) 
+- `Fjob` - father's job (nominal: `teacher` for teacher, `health` for health care related, `services` for civil services, `at_home` for at home, `other` for others) 
+- `reason` - reason to choose this school (nominal: `home` for close to home, `reputation` for school reputation, `course` for course preference, `other` for others) 
+- `guardian` - student's guardian (nominal: `mother`, `father` or `other`) 
+- `traveltime` - home to school travel time (numeric: `1` for less than 15 min, `2` for 15 to 30 min, `3` for 30 min to 1 hour, `4` for more than 1 hour) 
+- `studytime` - weekly study time (numeric: `1` for less than 2 hours, `2` for 2 to 5 hours, `3` for 5 to 10 hours, `4` for more than 10 hours) 
+- `failures` - number of past class failures (numeric: `n` for $1\leq n<3$, 3 for $n \geq 3$) 
+- `schoolsup` - extra educational support (binary: `yes` or `no`) 
+- `famsup` - family educational support (binary: `yes` or `no`) 
+- `paid` - extra paid classes within the course subject (Math or Portuguese) (binary: `yes` or `no`) 
+- `activities` - extracurricular activities (binary: `yes` or `no`) 
+- `nursery` - attended nursery school (binary: `yes` or `no`) 
+- `higher` - wants to take higher education (binary: `yes` or `no`) 
+- `internet` - Internet access at home (binary: `yes` or `no`) 
+- `romantic` - with a romantic relationship (binary: `yes` or `no`) 
+- `famrel` - quality of family relationships (numeric: from `1` for very bad to `5` for excellent) 
+- `freetime` - free time after school (numeric: from `1` for very low to `5` for very high) 
+- `goout` - going out with friends (numeric: from `1` for very low to `5` for very high) 
+- `Dalc` - workday alcohol consumption (numeric: from `1` for very low to `5` for very high) 
+- `Walc` - weekend alcohol consumption (numeric: from `1` for very low to `5` for very high) 
+- `health` - current health status (numeric: from `1` for very bad to `5` for very good) 
+- `absences` - number of school absences (numeric: from `0` to `93`) 
+
+Note that the following two variables were expected to be highly correlated to `G3`, because the first and second period grade had significant impact on the final grade. 
+
+- `G1` - first period grade (numeric: from `0` to `20`) 
+- `G2` - second period grade (numeric: from `0` to `20`) 
+
+### Potential predictor variables 
+
+Since the dataset was obtained by merging two datasets, columns not used for merging resulted in additional columns. Most predictor variables, such as weekly hours spent on studying, were expected to have similar impacts on each subject. For the following graphs, data from mathematics were used if the variable was not merged. Intuitively, `failures`, `goout`, `studytime`, and `abscences` were expected to help explain student performance. Note that these five variables were all discrete. 
+
+```{r}
+# Import data and extract required information 
+data = read.csv('student.csv')
+df = data.frame('G3' = data$G3.x, 
+                'failures' = data$failures.x, 
+                'goout' = data$goout.x, 
+                'studytime' = data$studytime.x, 
+                'abscences' = data$absences.x) 
+```
+
+```{r}
+ggplot(df, aes(y=G3)) + geom_boxplot(fill = 'orange', color = 'blue')
+```
+
+The boxplot above showed the distribution of final grades. Note that most students score around `8` to `14`, with min and max being `0` and `20`. 
+
+```{r}
+ggplot(df, aes(y=failures)) + geom_boxplot(fill = 'orange', color = 'blue')
+```
+
+The boxplot above shows the distribution of failures. Most of the students did not fail in any past classes. Recall that `3` represented students who failed 3 or more classes. 
+
+```{r}
+ggplot(df, aes(y=goout)) + geom_boxplot(fill = 'orange', color = 'blue')
+```
+
+The boxplot above showed the distribution of how frequently students went out with friends. Recall that `goout` ranged from `1` (very low) to `5` (very high). 
+
+```{r}
+ggplot(df, aes(y=studytime)) + geom_boxplot(fill = 'orange', color = 'blue')
+```
+
+The boxplot above showed the distribution of how much time students spent studying weekly. It indicated that most students study for less than `5` hours per week. Recall that for `studytime`, `1` represented students who spent less than 2 hours, and `2` represented students who spent 2 to 5 hours weekly. 
+
+```{r}
+ggplot(df, aes(y=abscences)) + geom_boxplot(fill = 'orange', color = 'blue')
+```
+
+The boxplot above showed the distribution of abscences. While most students had less than `10` school abscences, there existed a fair amount of outliers. Interestingly, the individual who had the most abscent (93) did not perform significantly worse than other students. 
+
+### Correlation 
+
+```{r}
+cor(df$G3, df$failures)
+```
+
+```{r}
+model = lm(G3~failures, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$failures, df$G3, main = 'Correlation between failures and final grade', xlab = 'Failures', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a negative correlation between `failures` and final grade. This was expected because students who failed more times in previous classes were less likely to perform well. 
+
+```{r}
+cor(df$G3, df$goout)
+```
+
+```{r}
+model = lm(G3~goout, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$goout, df$G3, main = 'Correlation between go outs and final grade', xlab = 'Go outs', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a negative correlation between `goout` and final grade, even though the relationship was less significant. It showed a slight tendency that students who went out with friends frequently would perform worse. 
+
+```{r}
+cor(df$G3, df$studytime)
+```
+
+```{r}
+model = lm(G3~studytime, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$studytime, df$G3, main = 'Correlation between study time and final grade', xlab = 'Study time', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above indicated a positive correlation between study time and final grade. It was expected because students who spent more time studying were expected to perform better. 
+
+```{r}
+cor(df$G3, df$abscences)
+```
+
+```{r}
+model = lm(G3~abscences, data = df) 
+a = unname(coef(model)[1]) 
+b = unname(coef(model)[2]) 
+plot(df$abscences, df$G3, main = 'Correlation between abscences and final grade', xlab = 'Abscences', ylab = 'Final Grade', col = 'orange', type = 'p', pch = 16) 
+abline(a, b, col='blue') 
+```
+
+The figure above showed a slight tendency that students who were abscent for more classes could perform better. This was an unexpected result, even though the positive relationship was insignificant. 
