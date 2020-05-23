@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset='utf-8'>
+    <title>CS498 Data Visualization Final Project</title>
+    <script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+    <style>
+      body {font: 18px Arial;}
+      .dot{stroke: 'midnightblue'}
+	  * {box-sizing:border-box}
+
+	.slideshow-container {
+	max-width: 1000px;
+	position: relative;
+	margin: auto;
+	}
+
+	.mySlides {
+	display: none;
+	}
+
+
+	.prev, .next {
+	cursor: pointer;
+	position: absolute;
+	top: 50%;
+	width: auto;
+	margin-top: -22px;
+	padding: 16px;
+	color: white;
+	font-weight: bold;
+	font-size: 18px;
+	transition: 0.6s ease;
+	border-radius: 0 3px 3px 0;
+	user-select: none;
+	}
+
+
+	.next {
+	right: 0;
+	border-radius: 3px 0 0 3px;
+	}
+
+	.prev:hover, .next:hover {
+	background-color: rgba(0,0,0,0.8);
+	}
+
+	.text {
+	color: blue;
+	font-size: 30px;
+	padding: 8px 12px;
+	position: absolute;
+	bottom: 8px;
+	width: 100%;
+	text-align: center;
+    }
+
+
+	.numbertext {
+	color: #f2f2f2;
+	font-size: 12px;
+	padding: 8px 12px;
+	position: absolute;
+	top: 0;
+}
+
+
+.dian {
+  cursor: pointer;
+  height: 15px;
+  width: 15px;
+  margin: 0 2px;
+  background-color: #bbb;
+  border-radius: 50%;
+  display: inline-block;
+  transition: background-color 0.6s ease;
+}
+
+.active, .dian:hover {
+  background-color: #717171;
+}
+
+
+.fade {
+  -webkit-animation-name: fade;
+  -webkit-animation-duration: 1.5s;
+  animation-name: fade;
+  animation-duration: 1.5s;
+}
+
+@-webkit-keyframes fade {
+  from {opacity: .4} 
+  to {opacity: 1}
+}
+
+@keyframes fade {
+  from {opacity: .4} 
+  to {opacity: 1}
+}
+strong { 
+  font-weight: bold;
+}
+    </style>
+  </head>
+  <body>
+  <h1>CS498 Data Visualization Final Project</h1>
+        <h3><strong>Wei-Chen Wang, netID: wcwang2</strong></h3>
+        
+<div class="slideshow-container">
+
+  
+  <div class="mySlides fade">
+    <div class="numbertext">1 / 4</div>
+   <p style="position: relative; bottom: 0; width:100%; text-align: left"> Welcome to UIUC! This data visualization project gives an overview of all CS courses at UIUC. Note that CS498 special topics is removed since the course offered changes drastically semester by semester. <br/> <br/> 
+   Please click on the dots below to go to the next slide. Enjoy! 
+   <br/> <br/> <br/> <br/> <br/> 
+   </p>
+    <div class="text">Introduction</div>
+  </div>
+
+  <div class="mySlides fade">
+    <div class="numbertext">2 / 4</div>
+    <p style="position: relative; bottom: 0; width:100%; text-align: left"> Yep. As a freshman, you are very likely to experience sitting in lecture halls with over 700 hundred students. But don't be hesitant about chatting with people around you, because one of your biggest advantages of choosing UIUC is you are able to meet so many people from different backgrounds all over the world! <br/> <br/> 
+    In case you are concerned with not being able to closely interact with professors due to the large class size, the student size is likely to decrease as you move on to your junior or senior year. CS499 Senior Thesis is another course offered at UIUC where you can work on a thesis independently with a professor. <br/> <br/> 
+    Hover over each dot below to see more information about each class (Same for the next two graphs). Click on the "Show color" button to see what courses are considered large, medium or small class sizes. In general, classes with more than 350 are considered large classes, while those with less than 150 are considered small classes. Average CS courses class size is about 250. 
+    <br/> <br/> <br/> <br/> <br/> 
+    <p/> 
+    <div class="text">Student number per class</div>
+  </div>
+
+  <div class="mySlides fade">
+    <div class="numbertext">3 / 4</div>
+    <p style="position: relative; bottom: 0; width:100%; text-align: left"> Average GPA for CS classes are somewhere near 3.5, and from the graph below, you can see a general trend where sophomore year is the most challenging year for most CS students. You might expect advanced level courses to be the hardest and with the lowest GPA, while this is certainly not the case at UIUC. However, that does not mean that they are not challenging, and it indeed harder to get an A or A+ on those courses. <br/> <br/> 
+    Click on the "show color" button to see what courses are considered to have a high, average or low GPA. In general, average GPA above 3.6 are considered easier classes, while those lower than 3.3 are considered harder classes. 
+    <br/> <br/> <br/> <br/> <br/> 
+    <div class="text">Average GPA by class</div>
+  </div>
+   <div class="mySlides fade">
+    <div class="numbertext">4 / 4</div>
+    <p style="position: relative; bottom: 0; width:100%; text-align: left"> If you think that you can finally relax in your senior year due to a higher average GPA, then you are certainly wrong. Advanced level courses may also be challenging and at times even more demanding than courses with a lower average GPA. From the graph below, we can see that it is indeed harder to get an A / A+ for advanced level courses, despite having a higher average GPA. The main reason is that advanced level courses are meant for you to explore different fields, so that you would not be too heavily punished for not being familiar with some topics. <br/> <br/> 
+    Note than an exception is that courses in the lower 400 level courses (around 410 to 420) have a relatively higher percentage. These courses are mostly intelligence and big data courses, and they are very popular at UIUC due to its usefulness in industries. Therefore, it may be hard to get a spot until your senior year where you will have a earlier priority. Choose your courses wisely, and best of luck at UIUC! <br/><br/> 
+    Click on the "Show color" button to see what courses are considered to have a high percentage of A / A+. In general, it's consider easy to receive an A if the percentage is higher than 65%, while considered low if the percentage is lower than 35%. 
+    <br/> <br/> <br/> <br/> <br/> 
+    </p> 
+    <div class="text">Percentage of A / A+</div>
+  </div>
+
+  <!-- Next and previous buttons -->
+  <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+  <a class="next" onclick="plusSlides(1)">&#10095;</a>
+</div>
+<br>
+
+<!-- The dots/circles -->
+<div style="text-align:center">
+  <span class="dian" onclick="currentSlide(1);openVisualization(event, 'intro')"></span> 
+  <span class="dian" onclick="currentSlide(2);openVisualization(event, '1')"></span> 
+  <span class="dian" onclick="currentSlide(3);openVisualization(event, '2')"></span> 
+  <span class="dian" onclick="currentSlide(4);openVisualization(event, '3')"></span>
+    
+</div>
+        
+		<div class='ass'>
+		<p></p>
+			<button class='btma'> Show color</button>
+		</div>
+	<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+	
+	<script> 
+		var second = { 
+	display: function() { 
+		var data=[{"course": "100", "title": "Freshman Orientation", "instructor": "Gunter, Elsa", "average": "3.9", "num": "322", "percentage": "90.10"},
+{"course": "101", "title": "Intro Computing: Engrg & Sci", "instructor": "Davis, Neal E", "average": "3.58", "num": "672", "percentage": "63.20"},
+{"course": "105", "title": "Intro Computing: Non-Tech", "instructor": "Harris, Albert F", "average": "3.33", "num": "507", "percentage": "43.20"},
+{"course": "125", "title": "Intro to Computer Science", "instructor": "Challen, Geoffrey W", "average": "3.63", "num": "735", "percentage": "72.40"},
+{"course": "126", "title": "Software Design Studio", "instructor": "Evans, Graham C", "average": "3.47", "num": "110", "percentage": "51.80"},
+{"course": "173", "title": "Discrete Structures", "instructor": "Warnow, Tandy", "average": "3.15", "num": "371", "percentage": "36.70"},
+{"course": "196", "title": "Freshman Honors", "instructor": "Challen, Geoffrey W", "average": "3.71", "num": "116", "percentage": "57.80"},
+{"course": "199", "title": "Real World Cases Scient Comput", "instructor": "Silva, Mariana T", "average": "3.85", "num": "53", "percentage": "88.70"},
+{"course": "210", "title": "Ethical & Professional Issues", "instructor": "Cunningham, Ryan M", "average": "3.85", "num": "145", "percentage": "78.60"},
+{"course": "225", "title": "Data Structures", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.42", "num": "706", "percentage": "61.30"},
+{"course": "233", "title": "Computer Architecture", "instructor": "Herman, Geoffrey L", "average": "3.18", "num": "353", "percentage": "50.70"},
+{"course": "241", "title": "System Programming", "instructor": "Angrave, Lawrence C", "average": "2.66", "num": "269", "percentage": "31.20"},
+{"course": "242", "title": "Programming Studio", "instructor": "Woodley, Michael J", "average": "3.31", "num": "213", "percentage": "35.70"},
+{"course": "296", "title": "Honors Course", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.83", "num": "82", "percentage": "87.80"},
+{"course": "357", "title": "Numerical Methods I", "instructor": "Silva, Mariana T", "average": "3.1", "num": "392", "percentage": "35.50"},
+{"course": "361", "title": "Prob & Stat for Computer Sci", "instructor": "Varodayan, David", "average": "2.94", "num": "78", "percentage": "37.20"},
+{"course": "374", "title": "Intro to Algs & Models of Comp", "instructor": "Chekuri, Chandra S", "average": "2.7", "num": "452", "percentage": "19.00"},
+{"course": "410", "title": "Text Information Systems", "instructor": "Zhai, Chengxiang", "average": "3.95", "num": "192", "percentage": "88.50"},
+{"course": "411", "title": "Database Systems", "instructor": "Alawini, Abdussalam A", "average": "3.57", "num": "197", "percentage": "44.70"},
+{"course": "412", "title": "Introduction to Data Mining", "instructor": "Li, Qi", "average": "3.53", "num": "160", "percentage": "45.00"},
+{"course": "418", "title": "Interactive Computer Graphics", "instructor": "Hart, John C", "average": "3.46", "num": "99", "percentage": "50.50"},
+{"course": "419", "title": "Production Computer Graphics", "instructor": "Shaffer, Eric G", "average": "3.81", "num": "31", "percentage": "64.50"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Misailovic, Sasa", "average": "3.59", "num": "86", "percentage": "73.30"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Parthasarathy, Madhusudan", "average": "3.54", "num": "106", "percentage": "69.80"},
+{"course": "424", "title": "Real-Time Systems", "instructor": "Sha, Lui R", "average": "3.81", "num": "29", "percentage": "82.80"},
+{"course": "425", "title": "Distributed Systems", "instructor": "Gupta, Indranil", "average": "3.41", "num": "287", "percentage": "18.10"},
+{"course": "427", "title": "Software Engineering I", "instructor": "Xie, Tao", "average": "3.88", "num": "146", "percentage": "87.70"},
+{"course": "433", "title": "Computer System Organization", "instructor": "Adve, Sarita V", "average": "3.55", "num": "32", "percentage": "37.50"},
+{"course": "438", "title": "Communication Networks", "instructor": "Roy Choudhury, Romit", "average": "3.45", "num": "112", "percentage": "21.40"},
+{"course": "440", "title": "Artificial Intelligence", "instructor": "Fleck, Margaret M", "average": "3.34", "num": "277", "percentage": "33.60"},
+{"course": "446", "title": "Machine Learning", "instructor": "Koyejo, Oluwasanmi O", "average": "3.27", "num": "133", "percentage": "32.30"},
+{"course": "447", "title": "Natural Language Processing", "instructor": "Hockenmaier, Julia C", "average": "3.43", "num": "75", "percentage": "38.70"},
+{"course": "450", "title": "Numerical Analysis", "instructor": "Solomonik, Edgar V", "average": "3.51", "num": "99", "percentage": "55.60"},
+{"course": "461", "title": "Computer Security I", "instructor": "Cunningham, Ryan M", "average": "3.41", "num": "148", "percentage": "37.20"},
+{"course": "461", "title": "Computer Security I", "instructor": "Bailey, Michael D", "average": "2.96", "num": "25", "percentage": "16.00"},
+{"course": "465", "title": "User Interface Design", "instructor": "Bailey, Brian P", "average": "3.38", "num": "130", "percentage": "33.10"},
+{"course": "466", "title": "Introduction to Bioinformatics", "instructor": "El-Kebir, Mohammed", "average": "3.75", "num": "36", "percentage": "58.30"},
+{"course": "473", "title": "Algorithms", "instructor": "Har-Peled, Sariel", "average": "3.08", "num": "40", "percentage": "25.00"},
+{"course": "484", "title": "Parallel Programming", "instructor": "Kale, Laxmikant V", "average": "3.26", "num": "43", "percentage": "37.20"}];
+data.forEach(function(d){
+d.instructor=d.instructor; 
+d.title=d.title; 
+d.course=+d.course;
+d.average=+d.average;
+d.percentage=+d.percentage;
+d.num=+d.num;
+});
+
+         var margin = {top: 20, right: 20, bottom: 30, left: 40},
+			width = 960 - margin.left - margin.right,
+			height = 500 - margin.top - margin.bottom;
+			var clr=0;
+			var clrbtm=d3.select('.ass').select('.btma');
+			var x=d3.scaleLinear().range([0,width]);
+			var y=d3.scaleLinear().range([height,0]);
+			var xAxis=d3.axisBottom(x);
+			var yAxis=d3.axisLeft(y);
+			var tooltip=d3.select('body')
+			.append('div')
+			.style('position','absolute')
+			.style('visibility','hidden')
+			.style('text-align','center')
+			.style('border','2px')
+			.style('background','steelblue')
+			.text('default');
+			var svg=d3.select('body').append('svg')
+			.attr('width',width+margin.left+margin.right)
+			.attr('height',height+margin.top+margin.bottom)
+			.append('g')
+			.attr('transform','translate('+margin.left+','+margin.top+')');
+			x.domain([0,40]);
+			y.domain([0,4]);
+		svg.append('g')
+			.attr('class','x axis')
+			.attr('transform','translate(0,'+height+')')
+			.call(xAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('x',width)
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Course Number');
+		svg.append('g')
+		    .attr('class','y axis')
+			.call(yAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('transform','rotate(-90)')
+			.attr('dy','.71em')
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Average Gpa');
+		svg.selectAll('.dot')
+			.data(data)
+			.enter().append('circle')
+			.attr('class','dot')
+			.attr('r',7.5)
+			.attr('cx',function(d, i){return x(i+1);})
+			.attr('cy',function(d){return y(d.average);})
+			.style('fill','blue')
+			.on('mouseover',function(d,i) {
+          return tooltip.style('opacity',1)
+				 .style('left',(d3.event.pageX)+'px')
+          		 .style('top',(d3.event.pageY)+'px')
+				 .style('visibility','visible')
+          		 .text('Course: ' + d.course+ ' ' + d.title + ', GPA average: '+ d.average + ', Students: ' + d.num + ', taught by ' + d.instructor);
+          })
+          .on('mouseout',function(){ return tooltip.style('opacity',0).style('visibility','hidden')});
+		  
+		  clrbtm.on('click',function(){return svg.selectAll('.dot').style("fill", function(d) {console.log(clr)
+				if ((clr-(clr%39))&1){
+				clr=clr+1
+				
+				return 'blue';}
+				else{clr=clr+1
+				
+				if (d.average > 3.6) {
+					return "green";
+				} else if (d.average > 3.3) {
+					return "orange";
+				}
+					return "red";
+				}})})
+	} 
+};  
+	</script> 
+	<script>var intro = {
+	display: function() {
+	}}</script>
+	<script> 
+		var third = { 
+	display: function() { 
+		var data=[{"course": "100", "title": "Freshman Orientation", "instructor": "Gunter, Elsa", "average": "3.9", "num": "322", "percentage": "90.10"},
+{"course": "101", "title": "Intro Computing: Engrg & Sci", "instructor": "Davis, Neal E", "average": "3.58", "num": "672", "percentage": "63.20"},
+{"course": "105", "title": "Intro Computing: Non-Tech", "instructor": "Harris, Albert F", "average": "3.33", "num": "507", "percentage": "43.20"},
+{"course": "125", "title": "Intro to Computer Science", "instructor": "Challen, Geoffrey W", "average": "3.63", "num": "735", "percentage": "72.40"},
+{"course": "126", "title": "Software Design Studio", "instructor": "Evans, Graham C", "average": "3.47", "num": "110", "percentage": "51.80"},
+{"course": "173", "title": "Discrete Structures", "instructor": "Warnow, Tandy", "average": "3.15", "num": "371", "percentage": "36.70"},
+{"course": "196", "title": "Freshman Honors", "instructor": "Challen, Geoffrey W", "average": "3.71", "num": "116", "percentage": "57.80"},
+{"course": "199", "title": "Real World Cases Scient Comput", "instructor": "Silva, Mariana T", "average": "3.85", "num": "53", "percentage": "88.70"},
+{"course": "210", "title": "Ethical & Professional Issues", "instructor": "Cunningham, Ryan M", "average": "3.85", "num": "145", "percentage": "78.60"},
+{"course": "225", "title": "Data Structures", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.42", "num": "706", "percentage": "61.30"},
+{"course": "233", "title": "Computer Architecture", "instructor": "Herman, Geoffrey L", "average": "3.18", "num": "353", "percentage": "50.70"},
+{"course": "241", "title": "System Programming", "instructor": "Angrave, Lawrence C", "average": "2.66", "num": "269", "percentage": "31.20"},
+{"course": "242", "title": "Programming Studio", "instructor": "Woodley, Michael J", "average": "3.31", "num": "213", "percentage": "35.70"},
+{"course": "296", "title": "Honors Course", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.83", "num": "82", "percentage": "87.80"},
+{"course": "357", "title": "Numerical Methods I", "instructor": "Silva, Mariana T", "average": "3.1", "num": "392", "percentage": "35.50"},
+{"course": "361", "title": "Prob & Stat for Computer Sci", "instructor": "Varodayan, David", "average": "2.94", "num": "78", "percentage": "37.20"},
+{"course": "374", "title": "Intro to Algs & Models of Comp", "instructor": "Chekuri, Chandra S", "average": "2.7", "num": "452", "percentage": "19.00"},
+{"course": "410", "title": "Text Information Systems", "instructor": "Zhai, Chengxiang", "average": "3.95", "num": "192", "percentage": "88.50"},
+{"course": "411", "title": "Database Systems", "instructor": "Alawini, Abdussalam A", "average": "3.57", "num": "197", "percentage": "44.70"},
+{"course": "412", "title": "Introduction to Data Mining", "instructor": "Li, Qi", "average": "3.53", "num": "160", "percentage": "45.00"},
+{"course": "418", "title": "Interactive Computer Graphics", "instructor": "Hart, John C", "average": "3.46", "num": "99", "percentage": "50.50"},
+{"course": "419", "title": "Production Computer Graphics", "instructor": "Shaffer, Eric G", "average": "3.81", "num": "31", "percentage": "64.50"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Misailovic, Sasa", "average": "3.59", "num": "86", "percentage": "73.30"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Parthasarathy, Madhusudan", "average": "3.54", "num": "106", "percentage": "69.80"},
+{"course": "424", "title": "Real-Time Systems", "instructor": "Sha, Lui R", "average": "3.81", "num": "29", "percentage": "82.80"},
+{"course": "425", "title": "Distributed Systems", "instructor": "Gupta, Indranil", "average": "3.41", "num": "287", "percentage": "18.10"},
+{"course": "427", "title": "Software Engineering I", "instructor": "Xie, Tao", "average": "3.88", "num": "146", "percentage": "87.70"},
+{"course": "433", "title": "Computer System Organization", "instructor": "Adve, Sarita V", "average": "3.55", "num": "32", "percentage": "37.50"},
+{"course": "438", "title": "Communication Networks", "instructor": "Roy Choudhury, Romit", "average": "3.45", "num": "112", "percentage": "21.40"},
+{"course": "440", "title": "Artificial Intelligence", "instructor": "Fleck, Margaret M", "average": "3.34", "num": "277", "percentage": "33.60"},
+{"course": "446", "title": "Machine Learning", "instructor": "Koyejo, Oluwasanmi O", "average": "3.27", "num": "133", "percentage": "32.30"},
+{"course": "447", "title": "Natural Language Processing", "instructor": "Hockenmaier, Julia C", "average": "3.43", "num": "75", "percentage": "38.70"},
+{"course": "450", "title": "Numerical Analysis", "instructor": "Solomonik, Edgar V", "average": "3.51", "num": "99", "percentage": "55.60"},
+{"course": "461", "title": "Computer Security I", "instructor": "Cunningham, Ryan M", "average": "3.41", "num": "148", "percentage": "37.20"},
+{"course": "461", "title": "Computer Security I", "instructor": "Bailey, Michael D", "average": "2.96", "num": "25", "percentage": "16.00"},
+{"course": "465", "title": "User Interface Design", "instructor": "Bailey, Brian P", "average": "3.38", "num": "130", "percentage": "33.10"},
+{"course": "466", "title": "Introduction to Bioinformatics", "instructor": "El-Kebir, Mohammed", "average": "3.75", "num": "36", "percentage": "58.30"},
+{"course": "473", "title": "Algorithms", "instructor": "Har-Peled, Sariel", "average": "3.08", "num": "40", "percentage": "25.00"},
+{"course": "484", "title": "Parallel Programming", "instructor": "Kale, Laxmikant V", "average": "3.26", "num": "43", "percentage": "37.20"}];
+data.forEach(function(d){
+d.instructor=d.instructor;
+d.title=d.title; 
+d.course=+d.course;
+d.average=+d.average;
+d.percentage=+d.percentage;
+d.num=+d.num;
+});   
+
+      var margin = {top: 20, right: 20, bottom: 30, left: 40},
+			width = 960 - margin.left - margin.right,
+			height = 500 - margin.top - margin.bottom;
+			var x=d3.scaleLinear().range([0,width]);
+			var y=d3.scaleLinear().range([height,0]);
+			var xAxis=d3.axisBottom(x);
+			var yAxis=d3.axisLeft(y);
+			var clr=0;
+			var clrbtm=d3.select('.ass').select('.btma');
+			var tooltip=d3.select('body')
+			.append('div')
+			.style('position','absolute')
+			.style('visibility','hidden')
+			.style('text-align','center')
+			.style('border','2px')
+			.style('background','steelblue')
+			.text('default');
+			var svg=d3.select('body').append('svg')
+			.attr('width',width+margin.left+margin.right)
+			.attr('height',height+margin.top+margin.bottom)
+			.append('g')
+			.attr('transform','translate('+margin.left+','+margin.top+')');
+			x.domain([0,40]);
+			y.domain([0,100]);
+		svg.append('g')
+			.attr('class','x axis')
+			.attr('transform','translate(0,'+height+')')
+			.call(xAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('x',width)
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Course Number');
+		svg.append('g')
+		    .attr('class','y axis')
+			.call(yAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('transform','rotate(-90)')
+			.attr('dy','.71em')
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Average Gpa');
+		svg.selectAll('.dot')
+			.data(data)
+			.enter().append('circle')
+			.attr('class','dot')
+			.attr('r',7.5)
+			.attr('cx',function(d, i){return x(i+1);})
+			.attr('cy',function(d){return y(d.percentage);})
+			.style('fill','blue')
+			.on('mouseover',function(d,i) {
+          return tooltip.style('opacity',1)
+				 .style('left',(d3.event.pageX)+'px')
+          		 .style('top',(d3.event.pageY)+'px')
+				 .style('visibility','visible')
+          		 .text('Course: ' + d.course+ ' ' + d.title + ', GPA average: '+ d.average + ', Students: ' + d.num + ', taught by ' + d.instructor);
+          })
+          .on('mouseout',function(){ return tooltip.style('opacity',0).style('visibility','hidden')});
+		  clrbtm.on('click',function(){return svg.selectAll('.dot').style("fill", function(d) {console.log(clr)
+				if ((clr-(clr%39))&1){
+				clr=clr+1
+				
+				return 'blue';}
+				else{clr=clr+1
+				
+				if (d.percentage > 65) {
+					return "green";
+				} else if (d.percentage > 35) {
+					return "orange";
+				}
+					return "red";
+				}})})
+	} 
+}; 
+		
+	</script> 
+	<script> 
+		var first = { 
+	display: function() { 
+		var data=[{"course": "100", "title": "Freshman Orientation", "instructor": "Gunter, Elsa", "average": "3.9", "num": "322", "percentage": "90.10"},
+{"course": "101", "title": "Intro Computing: Engrg & Sci", "instructor": "Davis, Neal E", "average": "3.58", "num": "672", "percentage": "63.20"},
+{"course": "105", "title": "Intro Computing: Non-Tech", "instructor": "Harris, Albert F", "average": "3.33", "num": "507", "percentage": "43.20"},
+{"course": "125", "title": "Intro to Computer Science", "instructor": "Challen, Geoffrey W", "average": "3.63", "num": "735", "percentage": "72.40"},
+{"course": "126", "title": "Software Design Studio", "instructor": "Evans, Graham C", "average": "3.47", "num": "110", "percentage": "51.80"},
+{"course": "173", "title": "Discrete Structures", "instructor": "Warnow, Tandy", "average": "3.15", "num": "371", "percentage": "36.70"},
+{"course": "196", "title": "Freshman Honors", "instructor": "Challen, Geoffrey W", "average": "3.71", "num": "116", "percentage": "57.80"},
+{"course": "199", "title": "Real World Cases Scient Comput", "instructor": "Silva, Mariana T", "average": "3.85", "num": "53", "percentage": "88.70"},
+{"course": "210", "title": "Ethical & Professional Issues", "instructor": "Cunningham, Ryan M", "average": "3.85", "num": "145", "percentage": "78.60"},
+{"course": "225", "title": "Data Structures", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.42", "num": "706", "percentage": "61.30"},
+{"course": "233", "title": "Computer Architecture", "instructor": "Herman, Geoffrey L", "average": "3.18", "num": "353", "percentage": "50.70"},
+{"course": "241", "title": "System Programming", "instructor": "Angrave, Lawrence C", "average": "2.66", "num": "269", "percentage": "31.20"},
+{"course": "242", "title": "Programming Studio", "instructor": "Woodley, Michael J", "average": "3.31", "num": "213", "percentage": "35.70"},
+{"course": "296", "title": "Honors Course", "instructor": "Fagen-Ulmschnei, Wade A", "average": "3.83", "num": "82", "percentage": "87.80"},
+{"course": "357", "title": "Numerical Methods I", "instructor": "Silva, Mariana T", "average": "3.1", "num": "392", "percentage": "35.50"},
+{"course": "361", "title": "Prob & Stat for Computer Sci", "instructor": "Varodayan, David", "average": "2.94", "num": "78", "percentage": "37.20"},
+{"course": "374", "title": "Intro to Algs & Models of Comp", "instructor": "Chekuri, Chandra S", "average": "2.7", "num": "452", "percentage": "19.00"},
+{"course": "410", "title": "Text Information Systems", "instructor": "Zhai, Chengxiang", "average": "3.95", "num": "192", "percentage": "88.50"},
+{"course": "411", "title": "Database Systems", "instructor": "Alawini, Abdussalam A", "average": "3.57", "num": "197", "percentage": "44.70"},
+{"course": "412", "title": "Introduction to Data Mining", "instructor": "Li, Qi", "average": "3.53", "num": "160", "percentage": "45.00"},
+{"course": "418", "title": "Interactive Computer Graphics", "instructor": "Hart, John C", "average": "3.46", "num": "99", "percentage": "50.50"},
+{"course": "419", "title": "Production Computer Graphics", "instructor": "Shaffer, Eric G", "average": "3.81", "num": "31", "percentage": "64.50"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Misailovic, Sasa", "average": "3.59", "num": "86", "percentage": "73.30"},
+{"course": "421", "title": "Progrmg Languages & Compilers", "instructor": "Parthasarathy, Madhusudan", "average": "3.54", "num": "106", "percentage": "69.80"},
+{"course": "424", "title": "Real-Time Systems", "instructor": "Sha, Lui R", "average": "3.81", "num": "29", "percentage": "82.80"},
+{"course": "425", "title": "Distributed Systems", "instructor": "Gupta, Indranil", "average": "3.41", "num": "287", "percentage": "18.10"},
+{"course": "427", "title": "Software Engineering I", "instructor": "Xie, Tao", "average": "3.88", "num": "146", "percentage": "87.70"},
+{"course": "433", "title": "Computer System Organization", "instructor": "Adve, Sarita V", "average": "3.55", "num": "32", "percentage": "37.50"},
+{"course": "438", "title": "Communication Networks", "instructor": "Roy Choudhury, Romit", "average": "3.45", "num": "112", "percentage": "21.40"},
+{"course": "440", "title": "Artificial Intelligence", "instructor": "Fleck, Margaret M", "average": "3.34", "num": "277", "percentage": "33.60"},
+{"course": "446", "title": "Machine Learning", "instructor": "Koyejo, Oluwasanmi O", "average": "3.27", "num": "133", "percentage": "32.30"},
+{"course": "447", "title": "Natural Language Processing", "instructor": "Hockenmaier, Julia C", "average": "3.43", "num": "75", "percentage": "38.70"},
+{"course": "450", "title": "Numerical Analysis", "instructor": "Solomonik, Edgar V", "average": "3.51", "num": "99", "percentage": "55.60"},
+{"course": "461", "title": "Computer Security I", "instructor": "Cunningham, Ryan M", "average": "3.41", "num": "148", "percentage": "37.20"},
+{"course": "461", "title": "Computer Security I", "instructor": "Bailey, Michael D", "average": "2.96", "num": "25", "percentage": "16.00"},
+{"course": "465", "title": "User Interface Design", "instructor": "Bailey, Brian P", "average": "3.38", "num": "130", "percentage": "33.10"},
+{"course": "466", "title": "Introduction to Bioinformatics", "instructor": "El-Kebir, Mohammed", "average": "3.75", "num": "36", "percentage": "58.30"},
+{"course": "473", "title": "Algorithms", "instructor": "Har-Peled, Sariel", "average": "3.08", "num": "40", "percentage": "25.00"},
+{"course": "484", "title": "Parallel Programming", "instructor": "Kale, Laxmikant V", "average": "3.26", "num": "43", "percentage": "37.20"}];
+data3=[]
+data.forEach(function(d){
+d.instructor=d.instructor;
+d.title=d.title; 
+d.course=+d.course;
+d.average=+d.average;
+d.percentage=+d.percentage;
+d.num=+d.num;
+});    
+     var margin = {top: 20, right: 20, bottom: 30, left: 40},
+			width = 960 - margin.left - margin.right,
+			height = 500 - margin.top - margin.bottom;
+			var x=d3.scaleLinear().range([0,width]);
+			var y=d3.scaleLinear().range([height,0]);
+			var xAxis=d3.axisBottom(x);
+			var yAxis=d3.axisLeft(y);
+			var clr=0;
+			var tooltip=d3.select('body')
+			.append('div')
+			.style('position','absolute')
+			.style('visibility','hidden')
+			.style('text-align','center')
+			.style('border','2px')
+			.style('background','steelblue')
+			.text('default');
+			var svg=d3.select('body').append('svg')
+			.attr('width',width+margin.left+margin.right)
+			.attr('height',height+margin.top+margin.bottom)
+			.append('g')
+			.attr('transform','translate('+margin.left+','+margin.top+')');
+			x.domain([0,40]);
+			y.domain([0,740]);
+			var clrbtm=d3.select('.ass').select('.btma');
+		svg.append('g')
+			.attr('class','x axis')
+			.attr('transform','translate(0,'+height+')')
+			.call(xAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('x',width)
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Course Number');
+		svg.append('g')
+		    .attr('class','y axis')
+			.call(yAxis)
+			.append('text')
+			.attr('class','label')
+			.attr('transform','rotate(-90)')
+			.attr('dy','.71em')
+			.attr('y',0)
+			.style('text-anchor','end')
+			.text('Average Gpa');
+		svg.selectAll('.dot')
+			.data(data)
+			.enter().append('circle')
+			.attr('class','dot')
+			.attr('r',7.5)
+			.attr('cx',function(d, i){return x(i+1);})
+			.attr('cy',function(d){return y(d.num);})
+			.style('fill','blue')
+			.on('mouseover',function(d,i) {
+          return tooltip.style('opacity',1)
+				 .style('left',(d3.event.pageX)+'px')
+          		 .style('top',(d3.event.pageY)+'px')
+				 .style('visibility','visible')
+          		 .text('Course: ' + d.course+ ' ' + d.title + ', GPA average: '+ d.average + ', Students: ' + d.num + ', taught by ' + d.instructor);
+          })
+          .on('mouseout',function(){ return tooltip.style('opacity',0).style('visibility','hidden')});
+		  clrbtm.on('click',function(){return svg.selectAll('.dot').style("fill", function(d) {console.log(clr)
+				if ((clr-(clr%39))&1){
+				clr=clr+1
+				
+				return 'blue';}
+				else{clr=clr+1
+				
+				if (d.num > 350) {
+					return "red";
+				} else if (d.num > 150) {
+					return "orange";
+				}
+					return "green";
+				}})})
+	} 
+}; 
+	</script> 
+	<script>
+		function openVisualization(evt, visName) {
+			var i, tabcontent, tablinks;
+			d3.select("svg").remove();
+			tabcontent = document.getElementsByClassName("tabcontent");
+			for (i = 0; i < tabcontent.length; i++) {
+				tabcontent[i].style.display = "none";
+			}
+			tablinks = document.getElementsByClassName("tablinks");
+			for (i = 0; i < tablinks.length; i++) {
+					tablinks[i].className = tablinks[i].className.replace(" active", "");
+					tablinks[i].className = tablinks[i].className.replace(" active", "");
+			}
+			// document.getElementById(visName).style.display = "block";
+			if(evt!==0)
+				evt.currentTarget.className += " active";
+				
+			if(visName==='3')
+				third.display();
+			if(visName==='2')
+				second.display();
+			if(visName==='1')
+				first.display(); 
+			if (visName==='intro')
+				intro.display();
+		}
+		openVisualization(0,'Overview');
+	</script>
+	<script>var slideIndex = 1;
+showSlides(slideIndex);
+
+// Next/previous controls
+function plusSlides(n) {
+  showSlides(slideIndex += n);
+}
+
+// Thumbnail image controls
+function currentSlide(n) {
+  showSlides(slideIndex = n);
+}
+
+function showSlides(n) {
+  var i;
+  var slides = document.getElementsByClassName("mySlides");
+  var dots = document.getElementsByClassName("dian");
+  if (n > slides.length) {slideIndex = 1} 
+  if (n < 1) {slideIndex = slides.length}
+  for (i = 0; i < slides.length; i++) {
+      slides[i].style.display = "none"; 
+  }
+  for (i = 0; i < dots.length; i++) {
+      dots[i].className = dots[i].className.replace(" active", "");
+  }
+  slides[slideIndex-1].style.display = "block"; 
+  dots[slideIndex-1].className += " active";
+} </script>
+  </body>
+</html> 
