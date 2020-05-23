@@ -1,0 +1,403 @@
+---
+title: "STAT 420 SU19 Final Project" 
+subtitle: "Relationship between Countries' Income and other societal factors"
+author: "Tengyuan Liang, Wei-Chen Wang, Shiyu Xu"
+date: "Aug 3, 2019."
+output: html_document
+---
+
+- [Team members] 
+- [Introduction] 
+  - [Why this topic?] 
+  - [Goal of this project] 
+- [Methods] 
+  - [Loading necessary libraries] 
+  - [Data acquisition] 
+  - [Response variable and predictors] 
+  - [Predictor collinearity] 
+  - [Additive linear model and model selection] 
+  - [Model Transformation] 
+  - [Model selection] 
+    - [Low income] 
+    - [Middle income] 
+    - [High income] 
+- [Results] 
+  - [Cosntant variance of residuals] 
+  - [Normality of residuals] 
+  - [Influential points] 
+  - [Leverage] 
+  - [Standardized residual] 
+- [Discussion] 
+- [Conclusion] 
+- [Appendix] 
+
+## Team members 
+
+- Tengyuan Liang (netID: `tl13`) 
+- Wei-Chen Wang (netID: `wcwang2`) 
+- Shiyu Xu (netID: `shiyuxu3`) 
+
+## Introduction 
+
+This dataset was obtained from the World Bank Economic Review, electronically available from August 12, 2015. It was originally created as a reference particularly for the World Banks policy-making process. Due to the lack of data for specific benchmark years, the research groups instead used household surveys for data-collecting.
+
+### Why this topic? 
+
+Despite several setbacks, the world's economy has demonstrated an overall increasing trend of income in the past three decades. However, when taking a closer look at different countries, the paces of economic development differ vastly. This difference in economic progress has been a popular focus for various economic studies. 
+
+### Goal of this project 
+
+In this project, we will try to explain these differences using social, economical and geological factors provided by the dataset. Instead of regressing on RRInc, our sole response variable, on all selected predictors, we divide the dataset into three sub-groups based on their income levels in variable "group". This method allows us to realize the potential development differences across income groups and contribute more specific advise which might be helpful for narrowing the wealth gaps. 
+
+Based on income per capita, we define those in the top 30% of every country to be high income, bottom 30% to be low income, and the middle 40% to be middle income. We will be using 5% significant level for this project unless otherwise specified. 
+
+## Methods 
+
+### Loading necessary libraries 
+
+```{r, message = FALSE, warning = FALSE}
+library(readr) 
+library(lmtest) 
+library(ggplot2) 
+library(faraway) 
+library(knitr) 
+```
+
+The above libraries are required for this project. 
+
+### Data acquisition 
+
+```{r}
+LMWPID = read.csv("all.csv") 
+data = LMWPID[, c('region', 'year', 'group', 'RRinc', 'RRmean', 'cons_2005ppp_pc', 'gdp_2005ppp_pc', 'totpop')] 
+data = na.omit(data) 
+data$year = data$year - 1986 
+``` 
+
+The data is first loaded from a CSV file, and records with the latest `bin_year` are extracted. We will only be focusing on predictors that we are interested in, and we will further introduce them in the following section. Rows with unknown values are omitted. For the year column, we are more interested in the number of years passed since 1986. The columns we choose to omit are as follow: 
+
+```{r echo=FALSE} 
+omitted_variables = c('`councod`', '`country`', '`inc_con`', '`source`', '`mysample`', '`bin_year`', '`pop`') 
+omitted_types = c('Factor with 165 levels', 'Factor with 159 levels', 'Factor with 2 levels', 'Factor with 7 levels', 'int', 'int', 'num') 
+omitted_description = c('3 letter country code, with separate codes for urban and rural surveys', 
+                        'Name of country', 'Binary variable indicating whether survey uses income (I) or consumption (C)', 
+                        'Source of household survey', '1 for separate rural and urban distritbutions in China, India or Indonesia; 0 for national distributions'
+                        , 'Benchmark years (1988, 1993, 1998, 2003, 2008)', 
+                        'Population of country / decile in the benchmark year') 
+knitr::kable(data.frame('Variable' = omitted_variables, 'Type' = omitted_types, 'Description' = omitted_description)) 
+```
+
+Notably, even though `pop` may seem to be an important predictor for the economy, it is simply the population for one decile of the country. There exists another column `totpop` that records the total population of the country, which will be ten times the value of `pop`. In addition, we care more about the general economic trend instead of the differences between each specific country, so country code and name are also omitted. 
+
+### Response variable and predictors 
+
+`RRinc` will be the main focus of the project, which is used as the sole response of all models. Response variable and predictors are detailed as below: 
+
+```{r echo=FALSE}
+variables = c('`RRinc`', '`region`', '`year`', '`group`', '`RRmean`', '`cons_2005ppp_pc`', '`gdp_2005ppp_pc`', '`totpop`') 
+types = c('int', 'Factor with 8 levels', 'int', 'int', 'int', 'num', 'num', 'num') 
+description = c('Average per capita income of country / decile expressed in 2005 Purchasing Power Parity (PPP)', 
+                '8 geographical / income regions', 
+                'Number of years of the year the survey is conducted after 1986', 
+                'Income decile groups (1 to 10)', 
+                'Average national per capita income expressed in 2005 PPP', 
+                'Country\'s per capita household private consumption in 2005 PPP', 
+                'Country\'s per capita Groww Domestic Product in 2005 PPP', 
+                'Country\'s total population in the benchmark year') 
+knitr::kable(data.frame('Variable' = variables, 'Type' = types, 'Description' = description)) 
+```
+
+### Predictor collinearity 
+
+To prevent collinearity within our model, we first examine the correlation among the variables. 
+
+```{r}
+pairs(data, col = 'blue')
+```
+
+From the graph above, it is obvious that the three predictors `RRmean`, `cons_2005ppp_pc` and `gdp_2005ppp_pc` have strong correlations. We may consider removing them when building and selecting a model. 
+
+```{r}
+round(c(cor(data$RRmean, data$cons_2005ppp_pc), 
+        cor(data$cons_2005ppp_pc, data$gdp_2005ppp_pc), 
+        cor(data$gdp_2005ppp_pc, data$RRmean)), 2) 
+```
+
+### Additive linear model and model selection 
+
+Before looking for the best model, we first fit the data to an additive linear regression model, and observe its results. 
+
+```{r}
+model = lm(RRinc ~ ., data = data) 
+summary(model) 
+```
+
+From the result above, even though the model is significant, all variables except for `group` and `RRmean`. It naturally makes sense because deciles divide the population based on their RRinc. We are more interested in other societal factors that may help explain a country's prosperity. Therefore, we will separate the data based on the decile to see how other factors influence each group of people. Due to the difficulty of dividing the data into groups in `R`, we simply imported three additional CSV, where the RRinc is replaced by the mean of RRinc in each group. We now build an additive linear regression model to observe the influence of other factors for each decile. 
+
+```{r}
+data_low = read.csv('low.csv') 
+data_med = read.csv('med.csv') 
+data_high = read.csv('high.csv') 
+
+data_low$year = data_low$year - 1986 
+data_med$year = data_med$year - 1986 
+data_high$year = data_high$year - 1986 
+``` 
+
+```{r}
+model_low = lm(RRinc ~ . - group, data = data_low) 
+model_med = lm(RRinc ~ . - group, data = data_low) 
+model_high = lm(RRinc ~ . - group, data = data_low) 
+summary(model_low)$coefficients[, c(1, 4)] 
+summary(model_med)$coefficients[, c(1, 4)] 
+summary(model_high)$coefficients[, c(1, 4)] 
+```
+
+Even though it may be a good sign that we find multiple predictors significant, the results are very different from what we have expected. We expect the coefficient for mature economies region to be positive, while the coeffieicnt for Sub-Saharan Africa to be negative. After close observation, we realized that the model was inflated by large value predictors, while the influence of small values, such as region, was almost neglected entirely. Therefore, we will be transforming these dominating variables to ensure that region plays a significant role in our model. 
+
+#### Model Transformation 
+
+```{r}
+model_low = lm(log(RRinc) ~ region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + log(totpop), data = data_low)
+model_med = lm(log(RRinc) ~ region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + log(totpop), data = data_med)
+model_high = lm(log(RRinc) ~  region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + log(totpop), data = data_high) 
+```
+
+```{r}
+summary(model_low)$coefficients[, c(1, 4)] 
+summary(model_med)$coefficients[, c(1, 4)]
+summary(model_high)$coefficients[, c(1, 4)]
+```
+
+The results now make more sense, as the coefficients for mature economies are all positive in each category, and significant in low and middle income category. We will further diagonose our models, and select the model that best fits our data. 
+
+### Model selection 
+
+First, we are interested in whether the interaction between total population and region is significant. We will take the results from the step function for each model, and use anova to test whether the additional interactive term is significant. For the step function, we will be using AIC and BIC, and use ANOVA to test which one is better. Note that if the result is `NA`, it means that the two models selected are the same. 
+
+#### Low income 
+
+```{r}
+n = length(resid(model_low)) 
+low_add_step_aic = step(model_low, direction="both", trace=0) 
+low_add_step_bic = step(model_low, direction="both", trace=0, k = log(n)) 
+model_low_int = lm(log(RRinc) ~ region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + totpop + totpop:region, data = data_low) 
+low_int_step_aic = step(model_low_int, direction="both", trace=0) 
+low_int_step_bic = step(model_low_int, direction="both", trace=0, k = log(n)) 
+``` 
+
+```{r}
+anova(low_add_step_aic, low_add_step_bic)$'Pr(>F)'[2] 
+anova(low_int_step_aic, low_int_step_bic)$'Pr(>F)'[2] 
+anova(low_add_step_aic, low_int_step_bic)$'Pr(>F)'[2] 
+```
+
+For the low level income group, we select the model `low_add_step_aic`, which includes `region`, `log(cons_2005ppp_pc)` and `log(gdp_2005ppp_pc)` as predictors. 
+
+#### Middle income 
+
+```{r}
+med_add_step_aic = step(model_med, direction="both", trace=0) 
+med_add_step_bic = step(model_med, direction="both", trace=0, k = log(n)) 
+model_med_int = lm(log(RRinc) ~ region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + totpop + totpop:region, data = data_med) 
+med_int_step_aic = step(model_med_int, direction="both", trace=0) 
+med_int_step_bic = step(model_med_int, direction="both", trace=0, k = log(n)) 
+```
+
+```{r}
+anova(med_add_step_aic, med_add_step_bic)$'Pr(>F)'[2] 
+anova(med_int_step_aic, med_int_step_bic)$'Pr(>F)'[2] 
+anova(med_add_step_aic, med_int_step_aic)$'Pr(>F)'[2] 
+```
+
+For the middle level income group, we select the model `med_int_step_aic`, which includes `region`, `log(cons_2005ppp_pc)`, `log(gdp_2005ppp_pc)`, `totpop` and `region:totpop` as predictors. 
+
+#### High income 
+
+```{r}
+high_add_step_aic = step(model_high, direction="both", trace=0) 
+high_add_step_bic = step(model_high, direction="both", trace=0, k = log(n)) 
+model_high_int = lm(log(RRinc) ~ region + year + log(cons_2005ppp_pc) + log(gdp_2005ppp_pc) + totpop + totpop:region, data = data_high) 
+high_int_step_aic = step(model_high_int, direction="both", trace=0) 
+high_int_step_bic = step(model_high_int, direction="both", trace=0, k = log(n)) 
+```
+
+```{r}
+anova(high_add_step_aic, high_add_step_bic)$'Pr(>F)'[2] 
+anova(high_int_step_aic, high_int_step_bic)$'Pr(>F)'[2] 
+anova(high_add_step_bic, high_int_step_aic)$'Pr(>F)'[2] 
+```
+
+For the high level income group, we select the model `high_int_step_aic`, which includes `region`, `log(cons_2005ppp_pc)`, `log(gdp_2005ppp_pc)`, `totpop` and `region:totpop` as predictors. 
+
+To sum up, we will be using `low_add_step_aic`, `med_int_step_aic`, `high_int_step_aic` for low, middle and high level income. 
+
+## Results 
+
+We will be doing four diagnostics, which include constant variance of residuals, normality of residuals, influential points and leverage. We first display the results, then we will explore futher each potential violation of assumptions in the discussion section. 
+
+### Cosntant variance of residuals 
+
+```{r}
+plot(fitted(low_add_step_aic), resid(low_add_step_aic), col = "blue", pch = 20,
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, col = "orange", lwd = 2)
+```
+
+```{r}
+plot(fitted(med_int_step_aic), resid(med_int_step_aic), col = "blue", pch = 20,
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, col = "darkorange", lwd = 2)
+```
+
+```{r}
+plot(fitted(high_int_step_aic), resid(high_int_step_aic), col = "blue", pch = 20,
+     xlab = "Fitted", ylab = "Residuals")
+abline(h = 0, col = "orange", lwd = 2)
+```
+
+```{r}
+bp_low = bptest(low_add_step_aic)$p.value 
+bp_med = bptest(med_int_step_aic)$p.value 
+bp_high = bptest(high_int_step_aic)$p.value 
+```
+
+### Normality of residuals 
+
+```{r}
+qqnorm(resid(low_add_step_aic),col = "orange") 
+qqline(resid(low_add_step_aic), col = "blue", lwd = 2) 
+```
+
+```{r}
+qqnorm(resid(med_int_step_aic),col = "orange")
+qqline(resid(med_int_step_aic), col = "blue", lwd = 2)
+``` 
+
+```{r}
+qqnorm(resid(high_int_step_aic), col = "orange")
+qqline(resid(high_int_step_aic), col = "blue", lwd = 2)
+```
+
+```{r}
+(shap_low = shapiro.test(resid(low_add_step_aic))$p.value) 
+(shap_med = shapiro.test(resid(med_int_step_aic))$p.value) 
+(shap_high = shapiro.test(resid(high_int_step_aic))$p.value) 
+```
+
+### Influential points 
+
+```{r}
+(cooks_low = unname(mean(cooks.distance(low_add_step_aic) > (4 / length(resid(low_add_step_aic)))))) 
+(cooks_med = unname(mean(cooks.distance(med_int_step_aic) > (4 / length(resid(med_int_step_aic)))))) 
+(cooks_high = unname(mean(cooks.distance(high_int_step_aic) > (4 / length(resid(high_int_step_aic)))))) 
+```
+
+### Leverage 
+
+```{r}
+(lev_low = mean(hatvalues(low_add_step_aic) > (2 * mean(hatvalues(low_add_step_aic))))) 
+(lev_med = mean(hatvalues(med_int_step_aic) > (2 * mean(hatvalues(med_int_step_aic))))) 
+(lev_high = mean(hatvalues(high_int_step_aic) > (2 * mean(hatvalues(high_int_step_aic))))) 
+```
+
+### Standardized residual 
+
+```{r}
+(rstd_low = mean(abs(rstandard(low_add_step_aic)) > 2)) 
+(rstd_med = mean(abs(rstandard(med_int_step_aic)) > 2)) 
+(rstd_high = mean(abs(rstandard(high_int_step_aic)) > 2)) 
+```
+
+## Discussion 
+
+For low income group, we end up with the following model: 
+$$log(RRinc) = \beta_0 + \beta_1I + \beta_2LA + \beta_3MENA + \beta_4ME + \beta_5AS + \beta_6R + \beta_7AF + \beta_8log(cons) + \beta_9log(gdp) + \epsilon$$ 
+where 
+
+- $\beta_0 = 0.35739$, intercept 
+- $\beta_1 = 0.02851$, $I$ for India 
+- $\beta_2 = -0.19991$, $LA$ for Latin America & Carib. 
+- $\beta_3 = 0.23584$, $MENA$ for Middle East or North Africa 
+- $\beta_4 = 0.80140$, $ME$ for mature economies 
+- $\beta_5 = 0.07509$, $AS$ for Asia 
+- $\beta_6 = 0.33428$, $R$ for Russia 
+- $\beta_7 = -0.14638$, $AF$ for Africa 
+- $\beta_8 = 0.43029$, $cons$ for $cons\_2005ppp\_pc$ 
+- $\beta_9 = 0.31506$, $gdp$ for $gdp\_2005ppp\_pc$ 
+
+For middle income group, we end up with the model: 
+$$log(RRinc) = \beta_0 + \beta_1I + \beta_2LA + \beta_3MENA + \beta_4ME + \beta_5AS + \beta_6R + \beta_7AF$$ 
+$$ + \beta_8log(cons) + \beta_9log(gdp) + \beta_{10}totpop + \beta_{11}I\times totpop + \beta_{12}LA\times totpop + \beta_{13}MENA\times totpop$$ 
+$$ + \beta_{14}ME \times totpop + \beta_{15}AS \times totpop + \beta_{16}R \times totpop + \beta_{17}AF \times totpop + \epsilon $$ 
+
+- $\beta_0 = 1.0416$ 
+- $\beta_1 = 0.6988$ 
+- $\beta_2 = -0.0333$ 
+- $\beta_3 = 0.1050$ 
+- $\beta_4 = 0.4384$ 
+- $\beta_5 = -0.0466$ 
+- $\beta_6 = 0.1032$ 
+- $\beta_7 = -0.2149$ 
+- $\beta_8 = 0.3859$ 
+- $\beta_9 = 0.3848$ 
+- $\beta_{10} = -0.0001$ 
+- $\beta_{11} = -0.0010$ 
+- $\beta_{12} = -0.0017$ 
+- $\beta_{13} = -0.0040$ 
+- $\beta_{14} = 0.0013$ 
+- $\beta_{15} = -0.0021$ 
+- $\beta_{16} = -0.0008$ 
+- $\beta_{17} = -0.0008$ 
+
+For high income group, we end up with the same model with coefficients as follow: 
+
+- $\beta_0 = -0.6170$ 
+- $\beta_1 = 2.6243$ 
+- $\beta_2 = 2.3698$ 
+- $\beta_3 = 2.2458$ 
+- $\beta_4 = 2.2351$ 
+- $\beta_5 = 2.2036$ 
+- $\beta_6 = 2.0664$ 
+- $\beta_7 = 2.2013$ 
+- $\beta_8 = 0.4018$ 
+- $\beta_9 = 0.4251$ 
+- $\beta_{10} = 0.0017$ 
+- $\beta_{11} = -0.0026$ 
+- $\beta_{12} = -0.0025$ 
+- $\beta_{13} = -0.0071$ 
+- $\beta_{14} = 0.0002$ 
+- $\beta_{15} = -0.0051$ 
+- $\beta_{16} = -0.0014$ 
+- $\beta_{17} = -0.0039$ 
+
+Note that for middle and high groups, the models are relatively large. This is because when using the R step function, its hierarchy will be respected, and therefore those that are not significant will not be removed. We choose to keep these predictors because we are interested whether each region has a positive or negative effect on a country's income per capita. These results match our expectations because for more mature economies and Russia, the estimates are positve and more significant. For African countries, the coefficients are mostly negative. 
+
+```{r echo=FALSE}
+knitr::kable(data.frame('Tests' = c('BP test','Shapiro', 'Influential points', 'Leverage', 'Large standardized residual'), 
+                        'Low' = c(bp_low, shap_low, cooks_low, lev_low, rstd_low), 
+                        'Middle' = c(bp_med, shap_med, cooks_med, lev_med, rstd_med), 
+                        'High' = c(bp_high, shap_high, cooks_high, lev_high, rstd_high))) 
+```
+
+Based on the table above, the assumption of normality is the most suspicious among three groups as all three Shapiro tests display extremely small p-values. The abnormality of data can also be detected visually by analyzing the Q-Q plots. Despite having majority of the points stick along with the line, the deviation at left tails still make normality assumption subject to further tests or modifications, especially for the high income group. However, this potential abnormality is indeed a reflection of the reality, as richer countries tend to deviate more from the expected value than the deviation between poorer countries and the expected. Even though the three models are run on arbitrarily splited wage groups, each wage group still contains three or four income levels. 
+
+Due to the same reason, the BP-tests for homoskedasticity suggest that homoskedasticity is violated for the low income group, but not for middle and high-income groups, at 1% significance level. The heteroskedasticity cannot be visually spotted as all three fitted-residual plots demonstrate randomly distributed error along $y=0$.
+
+The Cooks-distance tests for influential points perform excellently, with the proportion of influential points being approximately 4% in each wage group. We as well tested the proportion of high-leverage points twice the mean as the criteria. This leverage test results are in favor of the low-earned group as the figure is the smallest among the three, while middle-income and high-income share the same proportion of high-leverage observations. The proportion of outliners in each income group is calculated using standardized residuals. Similar to the cooks distance results, the percentage of outliners that are larger than 2 are roughly 5% for each group, which indicates the amount of outliners are within our expectation. 
+
+## Conclusion 
+
+In conclusion, even though the three models above depict a big picture of how the world economy behaves, they are certainly not perfect. We can conclude that the economy for each group have not changed significantly throughout the past decades, while regions remained an important factor when predicting the economy of each country. Unsurprisingly, people from countries with higher GDP  tend to have a higher per capita income. In general, the dummy variable for mature economies have huge positive impact on the `RRinc`, while this impact becomes less significant for higher income level. While there remained some violation of assumptions, we believe that this reflected the difficulty of predicting the world economy by simply using total population, gdp and region. For example, UK and the US both have high `RRinc`, but their total population and country gdp are vastly different. To have a more accurate prediction, more factors should be taken into consideration because there exist many variables that can have strong impacts on the purchasing power parity for each individual country. Without building a model for each country individually, our models reveal a general trend of how total population, region, GDP and `RRmean` impact a country's purchasing power parity. 
+
+## Appendix 
+
+The dataset used in our study is mainly authored by Christoph Lakner and Branko Milanovic and constructed specifically for the paper published on the World Bank Economic Review: “Global Income Distribution: From the Fall of the Berlin Wall to the Great Recession”. This dataset consists of both balanced and unbalanced panel of countries’ economical information over the past two decades (1988-2018). 
+
+The detail of each of the model selected for low, middle and high income groups are as follow: 
+
+```{r}
+summary(low_add_step_aic) 
+summary(med_int_step_aic) 
+summary(high_int_step_aic) 
+```
